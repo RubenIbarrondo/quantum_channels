@@ -1,4 +1,4 @@
 import numpy as np
 
 def d_trace(rho, sigma):
-    return np.linalg.norm(rho - sigma) / 2
+    return np.linalg.norm(rho - sigma, 'nuc') / 2

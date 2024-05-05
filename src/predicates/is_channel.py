@@ -9,10 +9,10 @@ def is_channel(t, tol=1e-6, show=False):
         print("For the Choi matrix of the channel:")
     choi_is_state = is_density_matrix(choi, tol=tol, show=show)
 
-    d1 = t.shape[0]
-    d2 = t.shape[1]
+    d2 = int(np.sqrt(t.shape[0]))
+    d1 = int(np.sqrt(t.shape[1]))
     trace_preserving = np.allclose(np.identity(d1), 
-                                   np.trace((t.T.conj() @ np.identity(d2).reshape(d2**2)).reshape((d2, d2))), tol=tol)
+                                   (t.T.conj() @ np.identity(d2).reshape(d2**2)).reshape((d1, d1)), atol=tol)
 
     if show:
         if trace_preserving:

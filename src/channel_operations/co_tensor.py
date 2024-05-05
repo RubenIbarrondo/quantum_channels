@@ -5,17 +5,20 @@ def co_tensor(t_arr, n=None):
     if isinstance(t_arr, list) and len(t_arr) == 2:
         t = t_arr[0]
         g = t_arr[1]
-        d1 = int(np.sqrt(t.shape[0]))
-        d2 = int(np.sqrt(g.shape[0]))
+        td1 = int(np.sqrt(t.shape[1]))
+        td2 = int(np.sqrt(t.shape[0]))
+        gd1 = int(np.sqrt(g.shape[1]))
+        gd2 = int(np.sqrt(g.shape[0]))
         
-        tres = t.reshape((d1, d1, d1, d1))
-        gres = g.reshape((d2, d2, d2 ,d2))
+        tres = t.reshape((td2, td2, td1, td1))
+        gres = g.reshape((gd2, gd2, gd1, gd1))
             
         tg = np.einsum("ijkl,mnop->imjnkolp", tres, gres)
 
-        return tg.reshape(((d1*d2)**2, (d1*d2)**2))
-    elif isinstance(ts, list) and len(ts) > 2:
-        return co_tensor([t_arr[0], co_tensor(ts[1:])])
+        return tg.reshape(((td2*gd2)**2, (td1*gd1)**2))
+    
+    elif isinstance(t_arr, list) and len(t_arr) > 2:
+        return co_tensor([t_arr[0], co_tensor(t_arr[1:])])
     elif n is not None:
         if n==1:
             return t_arr

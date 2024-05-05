@@ -1,6 +1,6 @@
 import numpy as np
 
-def d_max_relative_entropy(rho, sigma):
+def d_max_relative_entropy(rho, sigma, basis=2):
     tol = 1e-7
 
     # Check support condition
@@ -18,7 +18,7 @@ def d_max_relative_entropy(rho, sigma):
     P = abs(rvecs.T @ svecs.conj()) ** 2
     if (rvals >= tol) @ (P >= tol) @ (svals < tol):
         return np.inf
-
+    
     # If true
-    s = np.log2(np.max(np.linalg.eigvals(np.linalg.inv(sigma) @ rho)))
+    s = np.log2(np.max(np.linalg.eigvals(np.linalg.pinv(sigma) @ rho))) / np.log2(basis)
     return s

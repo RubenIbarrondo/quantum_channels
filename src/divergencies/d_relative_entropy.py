@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def d_relative_entropy(rho, sigma):
+def d_relative_entropy(rho, sigma, basis=2):
     tol = 1e-7
     # S(rho || sigma) = sum_i(p_i log p_i) - sum_ij(p_i P_ij log q_i)
     #
@@ -26,7 +26,7 @@ def d_relative_entropy(rho, sigma):
     svals[abs(svals) < tol] = 1
     nzrvals = rvals[abs(rvals) >= tol]
     # Calculate S
-    S = nzrvals @ np.log2(nzrvals) - rvals @ P @ np.log2(svals)
+    S = (nzrvals @ np.log2(nzrvals) - rvals @ P @ np.log2(svals) )/  np.log2(basis)
     # the relative entropy is guaranteed to be >= 0, so we clamp the
     # calculated value to 0 to avoid small violations of the lower bound.
     return max(0, S)
