@@ -1,6 +1,9 @@
 import numpy as np
 
-def depolarizing(dim: int, p: float, r: np.ndarray):
+def depolarizing(dim: int, p: float, r: np.ndarray = None):
+    if r is None:
+        r = np.identity(dim) / dim
+    
     max_entang = np.reshape(np.identity(dim), dim**2)
     vr = np.reshape(r, dim**2)
 
