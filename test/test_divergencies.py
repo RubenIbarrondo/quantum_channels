@@ -106,4 +106,14 @@ class TestDivergencies(unittest.TestCase):
     def test_hs_dist(self):
         from src.pyqch.divergencies import hs_dist
 
-        raise NotImplementedError("hs_dist testing is not implemented.")
+        dim = 3
+
+        rho, sigma = self._orthogonal_pure_states(dim)
+        self.assertAlmostEqual(hs_dist(rho, sigma), np.sqrt(2))
+
+        rho, sigma = self._pure_and_maximally_mixed(dim)
+        self.assertAlmostEqual(hs_dist(rho, sigma), np.sqrt((1-1/dim)**2 + (dim-1)*(1/dim)**2))
+        self.assertAlmostEqual(hs_dist(sigma, rho), np.sqrt((1-1/dim)**2 + (dim-1)*(1/dim)**2))
+
+        rho, sigma, urho, usigma = self._dense_states_and_rotated(dim)
+        self.assertAlmostEqual(hs_dist(rho, sigma), hs_dist(urho, usigma))
