@@ -75,7 +75,7 @@ class TestChannelFamilies(unittest.TestCase):
         self.assertTrue(np.allclose(r_q,r_qc_q), msg="qc->q Inconsistency.")
         self.assertTrue(np.allclose(r_c,r_qc_c), msg="qc->c Inconsistency.")
 
-    def test_cf_dephasing(self):
+    def test_dephasing(self):
         from  src.pyqch.channel_families import dephasing
         dim = 3
         g = .33
@@ -92,7 +92,7 @@ class TestChannelFamilies(unittest.TestCase):
 
         self.assertTrue(np.allclose(rho_out, rho_out_ref))
 
-    def test_cf_initializer(self):
+    def test_initializer(self):
         from  src.pyqch.channel_families import initializer
 
         dim = 3
@@ -111,7 +111,7 @@ class TestChannelFamilies(unittest.TestCase):
         rho_out_ref = np.sum([p_in[k] * state_list[k] for k in range(len(state_list))], axis=0)
         self.assertTrue(np.allclose(rho_out, rho_out_ref))
     
-    def test_cf_probabilistic_unitaries(self):
+    def test_probabilistic_unitaries(self):
         from  src.pyqch.channel_families import probabilistic_unitaries
 
         dim = 3
@@ -150,7 +150,7 @@ class TestChannelFamilies(unittest.TestCase):
         self.assertTrue(np.allclose(rho_p_out, rho_out))
 
     def test_classical_permutation(self):
-        from  src.pyqch.channel_families import classical_permutaiton
+        from  src.pyqch.channel_families import classical_permutation
 
         dim = 3
         shift = 1
@@ -160,7 +160,7 @@ class TestChannelFamilies(unittest.TestCase):
 
         p_out_ref = np.roll(p_in, shift)
 
-        p_out = classical_permutaiton(dim, perm) @ p_in
+        p_out = classical_permutation(dim, perm) @ p_in
 
         self.assertTrue(np.allclose(p_out, p_out_ref))
 

@@ -1,5 +1,5 @@
 from .amplitude_damping import amplitude_damping
-from .classical_permutation import classical_permutaiton
+from .classical_permutation import classical_permutation
 from .dephasing import dephasing
 from .depolarizing import depolarizing
 from .embed_classical import embed_classical

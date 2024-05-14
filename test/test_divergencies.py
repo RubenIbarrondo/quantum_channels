@@ -102,3 +102,8 @@ class TestDivergencies(unittest.TestCase):
             self.assertAlmostEqual(hockey_stick(sigma2, rho2, gamma), 1-1/dim + np.max([0, 1/dim-gamma]))
 
             self.assertAlmostEqual(hockey_stick(rho3, sigma3, gamma), hockey_stick(urho3, usigma3, gamma))
+        
+    def test_hs_dist(self):
+        from src.pyqch.divergencies import hs_dist
+
+        raise NotImplementedError("hs_dist testing is not implemented.")
