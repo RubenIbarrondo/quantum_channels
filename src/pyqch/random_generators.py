@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import unitary_group
+from scipy.stats import unitary_group, dirichlet
 
 def channel(dim_in:int, dim_out:int = None, kraus_rank:int = None):
     
@@ -20,3 +20,30 @@ def channel(dim_in:int, dim_out:int = None, kraus_rank:int = None):
     # Taking products and tracing out the final environment with dimension kraus_rank
     t_astensor = np.einsum("nik,mil->nmkl" , v, v.conj())
     return np.reshape(t_astensor, (dim_out**2, dim_in**2))
+
+
+def state_dirichlet(dim:int, alpha:float):
+    """ Generates random states sampling their spectrum from the homogeneous dirichlet distribution
+    with concentration parameter alpha.
+    The basis are rotated with Haar random unitary matrices.
+    
+    Note: alpha->0 pure states, alpha=1 uniform measure, alpha->infty maximally mixed
+    
+    """
+    spec = dirichlet.rvs([alpha]*dim, size=1, random_state=1)[0]
+    u = unitary_group.rvs(dim)
+    rho = u @ np.diag(spec) @ u.T.conj()
+    return rho
+
+
+def state(dim: int, rank:int = None):
+    if rank is None:
+        rank = dim
+    u = unitary_group.rvs(dim * rank)
+    purification = np.outer(u[0, :], u[0,:].conjugate())
+    return np.trace(np.reshape(purification, (dim, rank, dim, rank)), axis1=1, axis2=3)
+
+
+def unitary_channel(dim: int):
+    u = unitary_group.rvs(dim)
+    return np.kron(u, u.conjugate())

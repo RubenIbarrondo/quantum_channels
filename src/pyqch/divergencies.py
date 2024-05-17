@@ -1,5 +1,36 @@
 import numpy as np
 
+def hockey_stick(rho, sigma, gamma):
+    return 1/2 * np.linalg.norm(rho- gamma * sigma, 'nuc')+1/2*np.trace(rho-gamma*sigma)
+
+
+def hs_dist(r, s):
+    return np.linalg.norm(r-s, 'fro')
+
+
+def max_relative_entropy(rho, sigma, basis=2):
+    tol = 1e-7
+
+    # Check support condition
+    rvals, rvecs = np.linalg.eigh(rho)
+    if any(abs(rvals.imag) >= tol):
+        raise ValueError("Input rho has non-real eigenvalues.")
+    rvals = rvals.real
+    svals, svecs = np.linalg.eigh(sigma)
+    if any(abs(svals.imag) >= tol):
+        raise ValueError("Input sigma has non-real eigenvalues.")
+    svals = svals.real
+
+    # Calculate inner products of eigenvectors and return +inf if kernel
+    # of sigma overlaps with support of rho.
+    P = abs(rvecs.T @ svecs.conj()) ** 2
+    if (rvals >= tol) @ (P >= tol) @ (svals < tol):
+        return np.inf
+    
+    # If true
+    s = np.log2(np.max(np.linalg.eigvals(np.linalg.pinv(sigma) @ rho))) / np.log2(basis)
+    return s
+
 
 def relative_entropy(rho, sigma, basis=2):
     tol = 1e-7
@@ -32,15 +63,6 @@ def relative_entropy(rho, sigma, basis=2):
     return max(0, S)
 
 
-if __name__ == "__main__":
-    import qutip
-    dim = 3
+def trace(rho, sigma):
+    return np.linalg.norm(rho - sigma, 'nuc') / 2
 
-    rho = np.zeros((dim, dim))
-    rho[0,0] = 1
-    sigma = np.zeros((dim, dim))
-    sigma[1,1] = 1
-
-    print(relative_entropy(rho, sigma))
-
-    print(qutip.entropy_relative(qutip.Qobj(rho), qutip.Qobj(sigma), base=2))

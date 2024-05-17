@@ -1,6 +1,45 @@
 import numpy as np
 from scipy import linalg
 
+
+def choi_state(t):
+    d2 = int(np.sqrt(t.shape[0]))
+    d1 = int(np.sqrt(t.shape[1]))
+
+    t = t.reshape((d2, d2, d1, d1))
+
+    choi = 1/d1 * t.transpose((0, 2, 1, 3)).reshape((d1*d2, d1*d2))
+    return choi
+
+
+def tensor(t_arr, n=None):
+    # n is only used if ts is not a list
+    if isinstance(t_arr, list) and len(t_arr) == 2:
+        t = t_arr[0]
+        g = t_arr[1]
+        td1 = int(np.sqrt(t.shape[1]))
+        td2 = int(np.sqrt(t.shape[0]))
+        gd1 = int(np.sqrt(g.shape[1]))
+        gd2 = int(np.sqrt(g.shape[0]))
+        
+        tres = t.reshape((td2, td2, td1, td1))
+        gres = g.reshape((gd2, gd2, gd1, gd1))
+            
+        tg = np.einsum("ijkl,mnop->imjnkolp", tres, gres)
+
+        return tg.reshape(((td2*gd2)**2, (td1*gd1)**2))
+    
+    elif isinstance(t_arr, list) and len(t_arr) > 2:
+        return tensor([t_arr[0], tensor(t_arr[1:])])
+    elif n is not None:
+        if n==1:
+            return t_arr
+        else:
+            return tensor([t_arr]*n)
+    else:
+        raise ValueError()
+    
+
 def fixed_points(t, tol=1e-6):
     # t has to be square matrix
     if not t.shape[0] == t.shape[1]:

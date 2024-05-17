@@ -26,7 +26,9 @@ def gm_el(dim: int):
                 
         ugm = ugm.reshape((dim**2, dim**2))
         return ugm
-    
+
+def el_gm(dim: int):
+    return gm_el(dim).T.conj()
 
 def __get_pauli_unitary():
     upauli = np.zeros((4, 4), dtype=complex)
