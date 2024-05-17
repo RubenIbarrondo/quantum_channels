@@ -2,19 +2,21 @@ import numpy as np
 from scipy.stats import unitary_group
 
 def channel(dim_in:int, dim_out:int = None, kraus_rank:int = None):
+    
     if dim_out is None:
         dim_out = dim_in
     if kraus_rank is None:
         kraus_rank = dim_out * dim_in
 
-    u = unitary_group.rvs(dim_out * dim_in * kraus_rank)
-    u = np.reshape(u, (dim_out,dim_in, kraus_rank,dim_out, dim_in, kraus_rank))
-
-    # The first dim_out should survive, for the second we should select the 0 axis
-    # the first dim_in should be traced out, the first one survive
-    # the first kraus rank should be traced out too, the first one should be set to the zero axis
-    ak_arr = u[:, :, :, 0, :, 0] 
+    if dim_out * kraus_rank < dim_in:
+        raise ValueError(f"Channel specifications must satisfy dim_out * kraus_rank >= dim_in, but {dim_out} * {kraus_rank} < {dim_in}.")
     
-    t_astensor = np.einsum("ijkl,mjkn->imln", ak_arr, ak_arr.conjugate())
-    return np.reshape(t_astensor, (dim_out**2, dim_in**2))
+    # Generate a random isometry from dim_in to dim_out * kraus_rank
+    # 1) Create a random unitary of dimension dim_out * kraus_rank
+    # 2) Take only dim_in columns, i.e. setting the initial state of the environment to 0
+    v = unitary_group.rvs(dim_out * kraus_rank)[:, :dim_in]
+    v = np.reshape(v, (dim_out, kraus_rank, dim_in))
 
+    # Taking products and tracing out the final environment with dimension kraus_rank
+    t_astensor = np.einsum("nik,mil->nmkl" , v, v.conj())
+    return np.reshape(t_astensor, (dim_out**2, dim_in**2))
