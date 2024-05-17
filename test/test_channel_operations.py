@@ -47,9 +47,9 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(choi_tu.dtype, tu.dtype)
         self.assertEqual(choi_tu.shape, (dim**2, dim**2))
 
-        self.assertTrue(np.allclose(choi_tu, choi_tu @ choi_tu))
-        self.assertTrue(np.allclose(np.identity(dim) / dim,
-                                    np.trace(choi_tu.reshape((dim,)*4), axis1=1, axis2=3)))
+        np.testing.assert_almost_equal(choi_tu, choi_tu @ choi_tu)
+        np.testing.assert_almost_equal(np.identity(dim) / dim,
+                                    np.trace(choi_tu.reshape((dim,)*4), axis1=1, axis2=3))
 
         # Replacer channel -> has to be the fixed state times the maximally mixed
         tr, rho = self._replacer_channel_and_state(dim)
@@ -58,8 +58,8 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(choi_tr.dtype, tr.dtype)
         self.assertEqual(choi_tr.shape, (dim**2, dim**2))
 
-        self.assertTrue(np.allclose(choi_tr,
-                                    np.kron(rho, np.identity(dim)/dim)))
+        np.testing.assert_almost_equal(choi_tr,
+                                    np.kron(rho, np.identity(dim)/dim))
         
         # Replacer channel d2!=d1 -> has to be the fixed state times the maximally mixed
         trdiff, rhodiff = self._replacer_channel_and_state_diffdim(dim, dim2)
@@ -68,8 +68,8 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(choi_trdiff.dtype, trdiff.dtype)
         self.assertEqual(choi_trdiff.shape, (dim*dim2, dim*dim2))
 
-        self.assertTrue(np.allclose(choi_trdiff,
-                                    np.kron(rhodiff, np.identity(dim)/dim)))
+        np.testing.assert_almost_equal(choi_trdiff,
+                                    np.kron(rhodiff, np.identity(dim)/dim))
 
         # Dephasing channel -> has to be a maximally correlated state
         tdeph = self._dephasing_channel(dim)
@@ -83,8 +83,8 @@ class TestChannelOperations(unittest.TestCase):
             correlated_state[k,k,k,k]=1/dim
         correlated_state = correlated_state.reshape((dim**2, dim**2))
 
-        self.assertTrue(np.allclose(choi_tdeph,
-                                    correlated_state))
+        np.testing.assert_almost_equal(choi_tdeph,
+                                    correlated_state)
 
         # Depolarizing channel -> has to be the corresponding convex combination
         p =.5
@@ -96,8 +96,8 @@ class TestChannelOperations(unittest.TestCase):
         
         max_entang = np.identity(dim).reshape(dim**2) / np.sqrt(dim)
     
-        self.assertTrue(np.allclose(choi_tdepol,
-                                    p * np.identity(dim**2)/dim**2 + (1-p) * np.outer(max_entang, max_entang.T.conj())))
+        np.testing.assert_almost_equal(choi_tdepol,
+                                    p * np.identity(dim**2)/dim**2 + (1-p) * np.outer(max_entang, max_entang.T.conj()))
         
 
     def test_fixed_points(self):
@@ -118,7 +118,7 @@ class TestChannelOperations(unittest.TestCase):
 
         self.assertEqual(fp_tr1.dtype, complex)
         self.assertEqual(fp_tr1.shape, (dim, dim))
-        self.assertTrue(np.allclose(fp_tr1, rho1))
+        np.testing.assert_almost_equal(fp_tr1, rho1)
 
         tr2, _ = self._replacer_channel_and_state_diffdim(dim, dim2)
 
@@ -138,7 +138,7 @@ class TestChannelOperations(unittest.TestCase):
         
         self.assertEqual(np.real_if_close(fp_depol).dtype, float)
         self.assertEqual(fp_depol.shape, (dim, dim))
-        self.assertTrue(np.allclose(fp_depol, np.identity(dim)/dim))
+        np.testing.assert_almost_equal(fp_depol, np.identity(dim)/dim)
 
         # a * Identity with a!=1 -> raise an error becaouse it doesn't have a fixed point
         tamply = 2 * np.identity(dim**2)
@@ -158,12 +158,12 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(tensor_tu.shape, (dim**4, dim**4))
         self.assertEqual(tensor_tu.dtype, tu.dtype)
 
-        self.assertTrue(np.allclose(np.identity(dim**2),
-                                    (tensor_tu @ np.identity(dim**2).reshape(dim**4)).reshape((dim**2, dim**2))))
+        np.testing.assert_almost_equal(np.identity(dim**2),
+                                    (tensor_tu @ np.identity(dim**2).reshape(dim**4)).reshape((dim**2, dim**2)))
         
-        self.assertTrue(np.allclose(np.identity(dim**4),
-                                    (tensor_tu @ tensor_tu.T.conj())))
-        self.assertTrue(np.allclose(tensor_tu, (np.transpose(tensor_tu.reshape((dim,)*(2*4)), (1,0,3,2, 5,4,7,6))).reshape((dim**4, dim**4))))
+        np.testing.assert_almost_equal(np.identity(dim**4),
+                                    (tensor_tu @ tensor_tu.T.conj()))
+        np.testing.assert_almost_equal(tensor_tu, (np.transpose(tensor_tu.reshape((dim,)*(2*4)), (1,0,3,2, 5,4,7,6))).reshape((dim**4, dim**4)))
 
         # Product of Replacer channels -> also a replacer towards the tensor of fixed states
         tr, rho = self._replacer_channel_and_state(dim)
@@ -172,8 +172,8 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(tensor_tr.shape, (dim**4, dim**4))
         self.assertEqual(tensor_tr.dtype, tr.dtype)
 
-        self.assertTrue(np.allclose(tensor_tr,
-                                    np.outer(np.kron(rho, rho).reshape(dim**4), np.identity(dim**2).reshape(dim**4))))
+        np.testing.assert_almost_equal(tensor_tr,
+                                    np.outer(np.kron(rho, rho).reshape(dim**4), np.identity(dim**2).reshape(dim**4)))
 
         # Product of Replacer channels diffdim-> also a replacer towards the tensor of fixed states
         tr2, rho2 = self._replacer_channel_and_state_diffdim(dim, dim2)
@@ -182,8 +182,8 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(tensor_tr2.shape, (dim**2*dim2**2, dim**4))
         self.assertEqual(tensor_tr2.dtype, (tr[0,0]*tr2[0,0]).dtype)
 
-        self.assertTrue(np.allclose(tensor_tr2,
-                                    np.outer(np.kron(rho, rho2).reshape(dim**2*dim2**2), np.identity(dim**2).reshape(dim**4))))
+        np.testing.assert_almost_equal(tensor_tr2,
+                                    np.outer(np.kron(rho, rho2).reshape(dim**2*dim2**2), np.identity(dim**2).reshape(dim**4)))
 
         # Product of Dephasing channels -> dephasing in the larger system
         tdephas = self._dephasing_channel(dim)
@@ -193,7 +193,7 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(tensor_tdephas.shape, (dim**4, dim**4))
         self.assertEqual(tensor_tdephas.dtype, tdephas.dtype)
 
-        self.assertTrue(np.allclose(tensor_tdephas, tdephas2))
+        np.testing.assert_almost_equal(tensor_tdephas, tdephas2)
 
         # Product of Depolarizing channels -> particular transformations of some states
         p = .5
@@ -203,8 +203,8 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(tenspor_depol.shape, (dim**4, dim**4))
         self.assertEqual(tenspor_depol.dtype, tdepol.dtype)
 
-        self.assertTrue(np.allclose(np.identity(dim**2).reshape(dim**4),
-                                    tenspor_depol @ np.identity(dim**2).reshape(dim**4)))
+        np.testing.assert_almost_equal(np.identity(dim**2).reshape(dim**4),
+                                    tenspor_depol @ np.identity(dim**2).reshape(dim**4))
 
         # Longer products, check formating 
         tensor_3 = tensor([tdepol, tdephas, tu])

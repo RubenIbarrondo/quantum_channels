@@ -17,10 +17,10 @@ class TestChannelFamilies(unittest.TestCase):
 
         rho_out = (dmat @ rho_in.reshape(dim**2)).reshape((dim, dim))
 
-        self.assertTrue(np.allclose(rho_out, (1-p) * rho_in + p * r))
+        np.testing.assert_almost_equal(rho_out, (1-p) * rho_in + p * r)
     
 
-    def test_amplitude_damping(self):
+    def test_probabilistic_damping(self):
         from  src.pyqch.channel_families import probabilistic_damping
 
         dim = 3
@@ -39,7 +39,7 @@ class TestChannelFamilies(unittest.TestCase):
         dmat = probabilistic_damping(dim, g)
         rho_out = (dmat @ rho_in.reshape(dim**2)).reshape((dim, dim))
 
-        self.assertTrue(np.allclose(rho_out, rho_out_ref))
+        np.testing.assert_almost_equal(rho_out, rho_out_ref)
 
     def test_povm_computational_basis(self):
         # POs for the coputational basis
@@ -72,8 +72,8 @@ class TestChannelFamilies(unittest.TestCase):
         r_qc_q = np.einsum("ijil->jl", r_qc)
         r_qc_c = np.einsum("ijlj->il", r_qc)
 
-        self.assertTrue(np.allclose(r_q,r_qc_q), msg="qc->q Inconsistency.")
-        self.assertTrue(np.allclose(r_c,r_qc_c), msg="qc->c Inconsistency.")
+        np.testing.assert_almost_equal(r_q,r_qc_q)
+        np.testing.assert_almost_equal(r_c,r_qc_c)
 
     def test_dephasing(self):
         from  src.pyqch.channel_families import dephasing
@@ -84,13 +84,13 @@ class TestChannelFamilies(unittest.TestCase):
         rho_in = np.full((dim, dim), 1/dim)
 
         # Create reference state
-        rho_out_ref = g * rho_in + (1-g) * np.diag(np.diag(rho_in))
+        rho_out_ref = (1-g) * rho_in + g * np.diag(np.diag(rho_in))
 
         # Test the action of the channel
         dephas_mat = dephasing(dim, g)
         rho_out = (dephas_mat @ rho_in.reshape(dim**2)).reshape((dim, dim))
 
-        self.assertTrue(np.allclose(rho_out, rho_out_ref))
+        np.testing.assert_almost_equal(rho_out, rho_out_ref)
 
     def test_initializer(self):
         from  src.pyqch.channel_families import initializer
@@ -109,7 +109,7 @@ class TestChannelFamilies(unittest.TestCase):
         rho_out = (init_mat @ p_in).reshape((dim, dim))
 
         rho_out_ref = np.sum([p_in[k] * state_list[k] for k in range(len(state_list))], axis=0)
-        self.assertTrue(np.allclose(rho_out, rho_out_ref))
+        np.testing.assert_almost_equal(rho_out, rho_out_ref)
     
     def test_probabilistic_unitaries(self):
         from  src.pyqch.channel_families import probabilistic_unitaries
@@ -132,7 +132,7 @@ class TestChannelFamilies(unittest.TestCase):
         rho_out = (pu_mat @ rho_in.reshape(dim**2)).reshape((dim, dim))
 
         rho_out_ref = np.sum([probs[k] * us[k] @ rho_in @ us[k].T.conj() for k in range(len(u_list))], axis=0)
-        self.assertTrue(np.allclose(rho_out, rho_out_ref))
+        np.testing.assert_almost_equal(rho_out, rho_out_ref)
 
     def test_embed_classical(self):
         from  src.pyqch.channel_families import embed_classical
@@ -147,7 +147,7 @@ class TestChannelFamilies(unittest.TestCase):
         rho_p_out = np.diag(stoch @ p_in)
         rho_out = (embed_classical(dim, stoch) @ rho_in.reshape(dim**2)).reshape((dim, dim))
 
-        self.assertTrue(np.allclose(rho_p_out, rho_out))
+        np.testing.assert_almost_equal(rho_p_out, rho_out)
 
     def test_classical_permutation(self):
         from  src.pyqch.channel_families import classical_permutation
@@ -162,5 +162,5 @@ class TestChannelFamilies(unittest.TestCase):
 
         p_out = classical_permutation(dim, perm) @ p_in
 
-        self.assertTrue(np.allclose(p_out, p_out_ref))
+        np.testing.assert_almost_equal(p_out, p_out_ref)
 

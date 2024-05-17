@@ -11,8 +11,8 @@ class TestRandomGenerators(unittest.TestCase):
         dim = 3
         rank = dim
 
+        # Assert basic structure
         num_instances = 5
-
         for instance in range(num_instances):
             rho = state(dim, rank)
 
@@ -56,6 +56,12 @@ class TestRandomGenerators(unittest.TestCase):
         dim2 = dim + 1
         rank = dim
 
+        # Assert value error when rank * dim_out < dim_in
+        with self.assertRaises(ValueError):
+            channel(dim+1, dim, 1)
+        with self.assertRaises(ValueError):
+            channel(2*dim, dim, 1)
+
         # Asserting output format, type and CPTP
         num_instances = 5
         for instance in range(num_instances):
@@ -92,11 +98,9 @@ class TestRandomGenerators(unittest.TestCase):
 
         self.assertTrue(is_channel(t))
 
-        self.assertTrue(np.allclose(np.identity(dim),
-                                    (t @ np.identity(dim).reshape(dim**2)).reshape((dim, dim))))
+        np.testing.assert_almost_equal(np.identity(dim), (t @ np.identity(dim).reshape(dim**2)).reshape((dim, dim)))
         
-        self.assertTrue(np.allclose(np.identity(dim**2),
-                                    (t @ t.T.conj())))
+        np.testing.assert_almost_equal(np.identity(dim**2), (t @ t.T.conj()))
 
 
 if __name__ == "__main__":

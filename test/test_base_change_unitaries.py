@@ -16,7 +16,7 @@ class TestGellMann(unittest.TestCase):
         ugm = gm_el(dim)
         pauli_gm = ugm.reshape((2, 2, 4)) # Reshape to get matrices
 
-        self.assertTrue(np.allclose(pauli_gm, pauli_ref))
+        np.testing.assert_almost_equal(pauli_gm, pauli_ref)
     
     def test_inverse_relation(self):
         from  src.pyqch.base_change_unitaries import el_gm
