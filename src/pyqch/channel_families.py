@@ -1,18 +1,6 @@
 import numpy as np
 
 
-def amplitude_damping(dim: int, g: float) -> np.array:
-    proy = np.zeros((dim**2, dim**2))
-    proy[0,0] = 1
-    
-    damp = np.zeros((dim, dim, dim, dim))
-    for l in range(dim-1):
-        damp[l, l, l+1, l+1] = 1
-    damp = damp.reshape((dim**2, dim**2))
-    
-    return (1-g) * np.identity(dim**2) + g * (proy+damp)
-
-
 def classical_permutation(dim: int, perm: np.ndarray):
     mat = np.zeros((dim, dim))
     mat[perm, np.arange(dim)] = 1
@@ -100,6 +88,18 @@ def povm(dim: int, pos: np.ndarray, mode='q-q'):
         mat = np.einsum('mi,mjk,ml,mno->ijlnko', a,pos, a, pos.conj())
         mat = mat.reshape(((m*dim)**2, dim**2))
     return mat
+
+
+def probabilistic_damping(dim: int, g: float) -> np.array:
+    proy = np.zeros((dim**2, dim**2))
+    proy[0,0] = 1
+    
+    damp = np.zeros((dim, dim, dim, dim))
+    for l in range(dim-1):
+        damp[l, l, l+1, l+1] = 1
+    damp = damp.reshape((dim**2, dim**2))
+    
+    return (1-g) * np.identity(dim**2) + g * (proy+damp)
 
 
 def probabilistic_unitaries(dim:int, ps:np.ndarray, us:np.ndarray):

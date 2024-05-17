@@ -21,7 +21,7 @@ class TestChannelFamilies(unittest.TestCase):
     
 
     def test_amplitude_damping(self):
-        from  src.pyqch.channel_families import amplitude_damping
+        from  src.pyqch.channel_families import probabilistic_damping
 
         dim = 3
         g = .33
@@ -36,7 +36,7 @@ class TestChannelFamilies(unittest.TestCase):
 
         rho_out_ref = (1-g) * rho_in + g * rho_out_ref
 
-        dmat = amplitude_damping(dim, g)
+        dmat = probabilistic_damping(dim, g)
         rho_out = (dmat @ rho_in.reshape(dim**2)).reshape((dim, dim))
 
         self.assertTrue(np.allclose(rho_out, rho_out_ref))

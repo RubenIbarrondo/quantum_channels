@@ -70,19 +70,19 @@ class TestDivergencies(unittest.TestCase):
         self.assertAlmostEqual(max_relative_entropy(rho, sigma), max_relative_entropy(urho, usigma))
     
     def test_trace(self):
-        from  src.pyqch.divergencies import trace
+        from  src.pyqch.divergencies import tr_dist
 
         dim = 3
 
         rho, sigma = self._orthogonal_pure_states(dim)
-        self.assertAlmostEqual(trace(rho, sigma), 1)
+        self.assertAlmostEqual(tr_dist(rho, sigma), 1)
 
         rho, sigma = self._pure_and_maximally_mixed(dim)
-        self.assertAlmostEqual(trace(rho, sigma), 1-1/dim)
-        self.assertAlmostEqual(trace(sigma, rho), 1-1/dim)
+        self.assertAlmostEqual(tr_dist(rho, sigma), 1-1/dim)
+        self.assertAlmostEqual(tr_dist(sigma, rho), 1-1/dim)
 
         rho, sigma, urho, usigma = self._dense_states_and_rotated(dim)
-        self.assertAlmostEqual(trace(rho, sigma), trace(urho, usigma))
+        self.assertAlmostEqual(tr_dist(rho, sigma), tr_dist(urho, usigma))
 
     def test_hockey_stick(self):
         from  src.pyqch.divergencies import hockey_stick

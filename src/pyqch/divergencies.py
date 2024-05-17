@@ -63,6 +63,6 @@ def relative_entropy(rho, sigma, basis=2):
     return max(0, S)
 
 
-def trace(rho, sigma):
+def tr_dist(rho, sigma):
     return np.linalg.norm(rho - sigma, 'nuc') / 2
 
