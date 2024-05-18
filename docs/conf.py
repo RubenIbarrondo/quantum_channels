@@ -1,8 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(sys.path[0]))), 'src'))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(sys.path[0])), 'src'))
-sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath("")), 'src'))
 
 # Configuration file for the Sphinx documentation builder.
 #
