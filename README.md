@@ -4,7 +4,7 @@ PyQch is a package containing the functions that I frequently require to make so
 
 ## Installation
 
-The package is not indexed. You can access the code in [/src]().
+The package is not indexed. You can access the code in [src]().
 
 ## Usage
 
