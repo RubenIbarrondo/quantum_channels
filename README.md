@@ -4,15 +4,14 @@ PyQch is a package containing the functions that I frequently require to make so
 
 ## Installation
 
-The package is not indexed. You can access the code in [src]().
+The package is not indexed. You can access the code in src.
 
 ## Usage
 
-Along the package states and channels are encoded as 2D `np.ndarray`s representing density matrices and transition matrices, respectively.
-Despite this means that to apply a channel to a state one has to reshape the latter into vector form and back, it was the representation
-that kept integration with `numpy` and `scipy` simplest. 
+States and channels are encoded as 2D `np.ndarray`s representing density and transition matrices, respectively.
+Although it implies that to apply a channel the state has to be reshaped into a 1D array and back, the representation kept integration with `numpy` and `scipy` simplest. 
 
-As an example, the following code generates two random states and a depolarizing channel, then prints their initial and final trace distance.
+For example, the following code generates two random states and a depolarizing channel, then prints their initial and final trace distance.
 
 ```python
 import numpy as np
