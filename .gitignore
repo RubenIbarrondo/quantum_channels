@@ -2,4 +2,4 @@
 tmp/
 .DS_Store
 .venv
-docs/build
+docs/_build
