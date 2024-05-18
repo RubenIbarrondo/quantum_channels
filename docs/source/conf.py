@@ -3,8 +3,6 @@ import os
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(sys.path[0]))), 'src'))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(sys.path[0])), 'src'))
 
-print(*sys.path, sep='\n')
-
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:

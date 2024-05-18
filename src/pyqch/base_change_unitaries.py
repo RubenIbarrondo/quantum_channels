@@ -15,10 +15,6 @@ def gm_el(dim: int) -> np.ndarray:
     Returns the unitary matrix that transforms from the coefficients in the
     generalized Gell-Mann normalized basis to the element-wise (computational) basis.
 
-    Gell-Mann matrices are a generalization of the Pauli matrices used to 
-    describe higher-dimensional systems in quantum mechanics [1]. They form a 
-    complete, orthogonal basis for the space of Hermitian matrices.
-
     Parameters
     ----------
     dim : int
@@ -32,6 +28,12 @@ def gm_el(dim: int) -> np.ndarray:
     See Also
     --------
     el_gm : Returns the inverse transformation.
+
+    Notes
+    -----
+    Gell-Mann matrices are a generalization of the Pauli matrices used to 
+    describe higher-dimensional systems in quantum mechanics [1]_. They form a 
+    complete, orthogonal basis for the space of Hermitian matrices.
 
     References
     ----------
@@ -83,10 +85,6 @@ def el_gm(dim: int) -> np.ndarray:
     (computational) basis to the coefficients in the generalized
     Gell-Mann normalized basis.
 
-    Gell-Mann matrices are a generalization of the Pauli matrices used to 
-    describe higher-dimensional systems in quantum mechanics [1]. They form a 
-    complete, orthogonal basis for the space of Hermitian matrices.
-
     Parameters
     ----------
     dim : int
@@ -100,10 +98,6 @@ def el_gm(dim: int) -> np.ndarray:
     See Also
     --------
     gm_el : Returns the inverse transformation.
-
-    References
-    ----------
-    .. [1] https://en.wikipedia.org/wiki/Gell-Mann_matrices
 
     Examples
     --------

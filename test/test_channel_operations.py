@@ -143,7 +143,7 @@ class TestChannelOperations(unittest.TestCase):
         # a * Identity with a!=1 -> raise an error becaouse it doesn't have a fixed point
         tamply = 2 * np.identity(dim**2)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             fixed_points(tamply)
         
     def test_tensor(self):

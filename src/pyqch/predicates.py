@@ -1,8 +1,52 @@
+"""
+predicates
+==========
+
+This module contains functions to check whether a given matrix is a density matrix 
+or a quantum channel. 
+"""
+
 import numpy as np
 from scipy.linalg import eigvalsh
 from .channel_operations import choi_state
 
-def is_channel(t, tol=1e-6, show=False):
+def is_channel(t: np.ndarray, tol: float = 1e-6, show: bool = False) -> bool:
+    """
+    Checks if the given matrix is a valid quantum channel.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        The transition matrix representing the quantum channel.
+    tol : float, optional
+        Tolerance for the numerical checks. Defaults to 1e-6.
+    show : bool, optional
+        If True, prints the results of the various tests performed. Defaults to False.
+
+    Returns
+    -------
+    bool
+        True if the matrix is a valid quantum channel, False otherwise.
+
+    Examples
+    --------
+    >>> from predicates import is_channel
+    >>> from channel_families import depolarizing 
+    >>> dim = 3
+    >>> p = 0.5
+    >>> tdepol = depolarizing(dim, p)
+    >>> is_channel(tdepol)
+    True
+    >>> t = 2.5 * tdepol
+    >>> result = is_channel(t, show = True)
+    For the Choi matrix of the channel:
+    Trace diff:  1.4999999999999996
+    Hermiticity diff:  0.0
+    Minimum eigval:  0.1388888888888888
+    Channel is not trace preserving.
+    >>> result
+    False
+    """
     choi = choi_state(t)
 
     if show:
@@ -22,7 +66,42 @@ def is_channel(t, tol=1e-6, show=False):
     return choi_is_state and trace_preserving
 
 
-def is_density_matrix(dm, tol=1e-6, show=False):
+def is_density_matrix(dm: np.ndarray, tol: float = 1e-6, show: bool = False) -> bool:
+    """
+    Checks if the given matrix is a valid density matrix.
+
+    Parameters
+    ----------
+    dm : np.ndarray
+        The matrix to be checked.
+    tol : float, optional
+        Tolerance for the numerical checks. Defaults to 1e-6.
+    show : bool, optional
+        If True, prints the results of the various tests performed. Defaults to False.
+
+    Returns
+    -------
+    bool
+        True if the matrix is a valid density matrix, False otherwise.
+
+    Examples
+    --------
+    >>> from predicates import is_density_matrix
+    >>> rho = np.array([[0.7, 0], [0, 0.3]])
+    >>> result = is_density_matrix(dm, show=True)
+    Trace diff:  0.0
+    Hermiticity diff:  0.0
+    Minimum eigval:  0.3
+    >>> result
+    True
+    >>> m = np.array([[1.3, 0], [0, -0.3]])
+    >>> result = is_density_matrix(m, show=True)
+    Trace diff:  0.0
+    Hermiticity diff:  0.0
+    Minimum eigval:  -0.3
+    >>> result
+    False
+    """
     dtr = np.max(np.abs(np.trace(dm)-1))
     dhrm = np.max(np.abs(dm-dm.conj().transpose()))
     # This can crash the Kernel for states of dimension higher

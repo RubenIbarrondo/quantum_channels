@@ -28,10 +28,10 @@ pyqch.channel\_operations module
    :undoc-members:
    :show-inheritance:
 
-pyqch.divergencies module
--------------------------
+pyqch.divergences module
+------------------------
 
-.. automodule:: pyqch.divergencies
+.. automodule:: pyqch.divergences
    :members:
    :undoc-members:
    :show-inheritance:

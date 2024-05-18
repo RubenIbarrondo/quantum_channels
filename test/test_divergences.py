@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-class TestDivergencies(unittest.TestCase):
+class TestDivergences(unittest.TestCase):
 
     def _orthogonal_pure_states(self, dim):
         rho = np.zeros((dim, dim))
@@ -40,7 +40,7 @@ class TestDivergencies(unittest.TestCase):
 
 
     def test_relative_entropy(self):
-        from  src.pyqch.divergencies import relative_entropy
+        from  src.pyqch.divergences import relative_entropy
 
         dim = 3
 
@@ -55,7 +55,7 @@ class TestDivergencies(unittest.TestCase):
         self.assertAlmostEqual(relative_entropy(rho, sigma), relative_entropy(urho, usigma))
 
     def test_max_relative_entropy(self):
-        from  src.pyqch.divergencies import max_relative_entropy
+        from  src.pyqch.divergences import max_relative_entropy
 
         dim = 3
 
@@ -70,7 +70,7 @@ class TestDivergencies(unittest.TestCase):
         self.assertAlmostEqual(max_relative_entropy(rho, sigma), max_relative_entropy(urho, usigma))
     
     def test_trace(self):
-        from  src.pyqch.divergencies import tr_dist
+        from  src.pyqch.divergences import tr_dist
 
         dim = 3
 
@@ -85,7 +85,7 @@ class TestDivergencies(unittest.TestCase):
         self.assertAlmostEqual(tr_dist(rho, sigma), tr_dist(urho, usigma))
 
     def test_hockey_stick(self):
-        from  src.pyqch.divergencies import hockey_stick
+        from  src.pyqch.divergences import hockey_stick
 
         dim = 3
         gamma_arr = [.5/dim, 1., 2.]
@@ -104,8 +104,8 @@ class TestDivergencies(unittest.TestCase):
             self.assertAlmostEqual(hockey_stick(rho3, sigma3, gamma), hockey_stick(urho3, usigma3, gamma))
         
     def test_hs_dist(self):
-        from src.pyqch.divergencies import hs_dist
-
+        from src.pyqch.divergences import hs_dist
+        
         dim = 3
 
         rho, sigma = self._orthogonal_pure_states(dim)
