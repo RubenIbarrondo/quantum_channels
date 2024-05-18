@@ -41,7 +41,6 @@ def gm_el(dim: int) -> np.ndarray:
 
     Examples
     --------
-    >>> import numpy as np
     >>> from base_change_unitaries import gm_el
     >>> U_el_gm = el_gm(2)  # Transforms from the normalized Pauli basis
     >>> # Define a density matrix in the Pauli basis
@@ -101,16 +100,18 @@ def el_gm(dim: int) -> np.ndarray:
 
     Examples
     --------
-    >>> import numpy as np
     >>> from base_change_unitaries import el_gm
     >>> dim = 3
     >>> U_el_gm = gm_el(dim)
     >>> # Define a density matrix in the computational basis
     >>> rho = np.diag([0.6, 0.3, 0.1])
     >>> # Transform the density matrix to the Gell-Mann basis
-    >>> rho_gm = U_el_gm @ rho.reshape(dim*2)
+    >>> rho_gm = U_el_gm @ rho.reshape(dim**2)
     >>> print("rho in Gell-Mann basis:")
     >>> print(rho_gm)
+    [0.38723499+0.j 0.        +0.j 0.21213203+0.j 0.        +0.j
+     0.38723499+0.j 0.        +0.j 0.21213203+0.j 0.        +0.j
+     0.2647605 +0.j]
     """
     return gm_el(dim).T.conj()
 

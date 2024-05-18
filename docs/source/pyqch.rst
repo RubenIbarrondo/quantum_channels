@@ -1,9 +1,6 @@
 pyqch package
 =============
 
-Submodules
-----------
-
 pyqch.base\_change\_unitaries module
 ------------------------------------
 
@@ -56,14 +53,6 @@ pyqch.state\_families module
 ----------------------------
 
 .. automodule:: pyqch.state_families
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: pyqch
    :members:
    :undoc-members:
    :show-inheritance:
