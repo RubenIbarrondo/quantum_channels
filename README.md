@@ -2,6 +2,10 @@
 
 PyQch is a package containing the functions that I frequently require to make some numerics with quantum channels.
 
+## Requirements
+
+PyQch uses `numpy` and `scipy`.
+
 ## Installation
 
 The package is not indexed. You can access the code in src.
