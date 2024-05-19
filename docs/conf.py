@@ -2,6 +2,8 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath("")), 'src'))
 
+print(*sys.path,sep='\n')
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
