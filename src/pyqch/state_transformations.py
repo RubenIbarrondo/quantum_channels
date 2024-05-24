@@ -175,11 +175,11 @@ def local_channel(state: np.ndarray, system: tuple[int], active_sites: tuple[int
     if is_square_channel:
         recovering_permutaiton = inv_perm
         active_system = tuple(system[i] for i in active_sites)
-    else:
-        raise NotImplementedError("Non-square channels are not supported yet.")
-        idle = None         # idle has to be potentially updated
-        active_first = None # active_sites[0] adapted accordingly
-        recovering_permutaiton = idle + (active_first,)
+    else:        
+        new_idle_pre_active = tuple(i for i, idl in enumerate(idle) if (idl < active_sites[0]))
+        new_active_first = len(new_idle_pre_active)
+        new_idle_post_active = tuple(i + 1 + new_active_first for i, idl in enumerate(idle) if (idl > active_sites[0]))
+        recovering_permutaiton = new_idle_pre_active + new_idle_post_active + (new_active_first,)
         active_system = (new_dim_active,)
 
     t_state = subsystem_permutation(t_state, idle_system + active_system, recovering_permutaiton)

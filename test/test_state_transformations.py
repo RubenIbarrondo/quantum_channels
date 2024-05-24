@@ -236,14 +236,91 @@ class TestStateTransformations_local_channel(unittest.TestCase):
 
     def test_local_channel_dimchange(self):
         # A channel that changes dimension
-        dim1 = 2
-        dim2 = 3
-        t_expand = np.zeros((dim2**2, dim1**2))
-        t_expand[:dim2, :dim2] = np.identity(dim2)
-        rho = np.identity(dim1*dim1) / dim1**2
+        dim1 = 3
+        dim2 = 4
+        t_expand = np.zeros((dim2, dim2, dim1, dim1))
+        for i in range(dim1):
+            for j in range(dim1):
+                t_expand[i,j,i,j] = 1
+        t_expand = t_expand.reshape((dim2**2, dim1**2))
+         
+        rho_in = np.identity(dim1*dim1) / dim1**2
+
         rho_exp = np.zeros((dim2, dim2))
         rho_exp[:dim1, :dim1] = np.identity(dim1)/dim1
         rho_ref = np.kron(rho_exp, np.identity(dim1)/dim1)
-        rho_ptr = local_channel(rho, (dim1,dim1), 0, t_expand)
+        rho_ptr = local_channel(rho_in, (dim1,dim1), 0, t_expand)
         np.testing.assert_array_almost_equal(rho_ptr, rho_ref)
+
+    def test_local_channel_dimchange_disjoint_preserveorder(self):
+        # A channel that changes dimension in disjoint positions preserving original order
+        n = 3
+        active_sites = (0, 2)
+        n_active = len(active_sites)
+        dim1 = 2
+        dim2 = dim1**n_active + 1  # Has to be larger than dim1**n_active
+                    
+        t_expand = np.zeros((dim2, dim2, dim1**n_active, dim1**n_active))
+        for i in range(dim1**n_active):
+            for j in range(dim1**n_active):
+                t_expand[i,j,i,j] = 1
+        t_expand = t_expand.reshape((dim2**2, dim1**(2*n_active)))
+
+        vrho_arr = [np.random.random((dim1, dim1)) for _ in range(n)]
+        rho_arr = [ v @ v.T /np.trace(v @ v.T) for v in vrho_arr]
+        
+        rho_in = 1
+        for rho_site in rho_arr:
+            rho_in = np.kron(rho_in, rho_site)
+
+        rho_active = 1
+        for site in active_sites:
+            rho_active = np.kron(rho_active, rho_arr[site])
+        rho_active_ref = (t_expand @ rho_active.reshape(dim1**(2*n_active))).reshape((dim2, dim2))
+        
+        rho_ref = 1
+        for site in range(n):
+            if site == active_sites[0]:
+                rho_ref = np.kron(rho_ref, rho_active_ref)
+            elif site not in active_sites:
+                rho_ref = np.kron(rho_ref, rho_arr[site])
+        
+        rho_exp = local_channel(rho_in, (dim1,)*n, active_sites, t_expand)
+        np.testing.assert_array_almost_equal(rho_exp, rho_ref)
+
+def test_local_channel_dimchange_disjoint_reverseorder(self):
+        # A channel that changes dimension in disjoint positions preserving original order
+        n = 3
+        active_sites = (2, 0)
+        n_active = len(active_sites)
+        dim1 = 2
+        dim2 = dim1**n_active + 1  # Has to be larger than dim1**n_active
+                    
+        t_expand = np.zeros((dim2, dim2, dim1**n_active, dim1**n_active))
+        for i in range(dim1**n_active):
+            for j in range(dim1**n_active):
+                t_expand[i,j,i,j] = 1
+        t_expand = t_expand.reshape((dim2**2, dim1**(2*n_active)))
+
+        vrho_arr = [np.random.random((dim1, dim1)) for _ in range(n)]
+        rho_arr = [ v @ v.T /np.trace(v @ v.T) for v in vrho_arr]
+        
+        rho_in = 1
+        for rho_site in rho_arr:
+            rho_in = np.kron(rho_in, rho_site)
+
+        rho_active = 1
+        for site in active_sites:
+            rho_active = np.kron(rho_active, rho_arr[site])
+        rho_active_ref = (t_expand @ rho_active.reshape(dim1**(2*n_active))).reshape((dim2, dim2))
+        
+        rho_ref = 1
+        for site in range(n):
+            if site == active_sites[0]:
+                rho_ref = np.kron(rho_ref, rho_active_ref)
+            elif site not in active_sites:
+                rho_ref = np.kron(rho_ref, rho_arr[site])
+        
+        rho_exp = local_channel(rho_in, (dim1,)*n, active_sites, t_expand)
+        np.testing.assert_array_almost_equal(rho_exp, rho_ref)
 
