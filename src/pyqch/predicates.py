@@ -112,3 +112,35 @@ def is_density_matrix(dm: np.ndarray, tol: float = 1e-6, show: bool = False) -> 
         print("Hermiticity diff: ", dhrm)
         print("Minimum eigval: ", dpos)
     return (dtr <= tol) and (dhrm <= tol) and (dpos >= - tol)
+
+
+def is_system_compatible(state: np.ndarray, system: tuple[int], show: bool = False) -> bool:
+    """
+    Checks if the given state and system structure are compatible.
+
+    Parameters
+    ----------
+    state : np.ndarray
+        The density matrix of the state.
+    system : tuple[int]
+        The system structure represented by a tupe with the local
+        dimension of the constituent subsystems. 
+    show : bool, optional
+        If True, prints the results of the various tests performed. by default False
+
+    Returns
+    -------
+    bool
+        True if the state and system structure are compatible, False otherwise.
+    """
+    is_2d = len(state.shape) == 2
+    is_square =  state.shape[0] == state.shape[1]
+    sys_dim = np.prod(system)
+    is_size = state.shape[0] == np.prod(system)
+
+    if show:
+        print("state is 2D." if is_2d else f"state is not 2D, found {len(state.shape)} axes.")
+        print("state is a square matrix." if is_square else f"state is not square matrix. {state.shape[0]} is different from {state.shape[1]}.")
+        print("state and system have incompatible dimensions." if is_size else f"state and system have incompatible dimensions. {state.shape[0]} is different from {sys_dim}." )
+    
+    return is_2d and is_square and is_size

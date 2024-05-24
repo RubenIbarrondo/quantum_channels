@@ -76,3 +76,40 @@ class TestPredicates(unittest.TestCase):
         A = np.identity(dim**2, dtype=complex)
         A[0,0] = 0
         self.assertFalse(is_channel(A))
+
+    def test_is_system_compatible(self):
+        from  src.pyqch.predicates import is_system_compatible
+   
+        # Single site
+        dim = 3
+        rho = np.zeros((dim, dim))
+        rho[0, 0] = 1
+        self.assertTrue(is_system_compatible(rho, (dim,)))
+
+        # Homogeneous many-body
+        dim = 2
+        n = 8
+        rho = np.diag(np.arange(1, 1+dim**n, dtype=float))
+        rho /= np.trace(rho)
+        self.assertTrue(is_system_compatible(rho, (dim,)*n))
+
+        # Bipartite system
+        dim1 = 3
+        dim2 = 2
+        rho = np.diag(np.arange(1, 1+dim1*dim2, dtype=float) )
+        rho = rho / np.trace(rho)
+        self.assertTrue(is_system_compatible(rho, (dim1, dim2)))
+
+        # state is not square
+        rho = np.ones((3, 2))
+        self.assertFalse(is_system_compatible(rho, (3,)))
+
+        # state has improper axis number
+        rho = np.ones((2,2,2))
+        self.assertFalse(is_system_compatible(rho, (2,)))
+
+        # Not compatible dimension
+        dim = 7
+        rho = np.identity(dim)
+        system = (5, 5, 5)
+        self.assertFalse(is_system_compatible(rho, system))
