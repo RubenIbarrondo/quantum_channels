@@ -42,7 +42,7 @@ def subsystem_reshape(state: np.ndarray, system: tuple[int]) -> np.ndarray:
         else:
             raise ve
 
-def subsystem_permutation(state: np.ndarray, system: tuple[int], permutaiton: tuple[int]) -> np.ndarray:
+def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tuple[int]) -> np.ndarray:
     """
     Performs the permutation of the subsystems on the state.
 
@@ -53,7 +53,7 @@ def subsystem_permutation(state: np.ndarray, system: tuple[int], permutaiton: tu
     system : tuple[int]
         The system structure represented by a tupe with the local
         dimension of the constituent subsystems.
-    permutaiton : tuple[int]
+    permutation : tuple[int]
         The permutation that maps i to permutation[i].
 
     Returns
@@ -68,12 +68,13 @@ def subsystem_permutation(state: np.ndarray, system: tuple[int], permutaiton: tu
     """
     dim = state.shape[0]
     
-    if len(system) != len(permutaiton):
-        raise ValueError(f"invalid permutation {permutaiton} for system structure {system}.")
+    if len(system) != len(permutation):
+        raise ValueError(f"invalid permutation {permutation} for system structure {system}.")
     
     state = subsystem_reshape(state, system)
     subsystem_num = len(system)
-    state = np.transpose(state, permutaiton + tuple(p+subsystem_num for p in permutaiton))
+    
+    state = np.transpose(state, permutation + tuple(p+subsystem_num for p in permutation))
     
     return state.reshape((dim, dim))
 
@@ -98,7 +99,7 @@ def partial_trace(state: np.ndarray, system: tuple[int], traced_sites: tuple[int
         The density matrix of the state resulting from the partial trace.
     """
     
-    # Other approach coul be to apply a permutaiton and then trace by biparititon
+    # Other approach coul be to apply a permutation and then trace by biparititon
     subsystem_num = len(system)
     ptrstate = subsystem_reshape(state, system)
 
@@ -173,14 +174,15 @@ def local_channel(state: np.ndarray, system: tuple[int], active_sites: tuple[int
     
     idle_system = tuple(system[i] for i in idle)
     if is_square_channel:
-        recovering_permutaiton = inv_perm
+        recovering_permutation = inv_perm
         active_system = tuple(system[i] for i in active_sites)
-    else:        
+    else:
+        
         new_idle_pre_active = tuple(i for i, idl in enumerate(idle) if (idl < active_sites[0]))
         new_active_first = len(new_idle_pre_active)
-        new_idle_post_active = tuple(i + 1 + new_active_first for i, idl in enumerate(idle) if (idl > active_sites[0]))
-        recovering_permutaiton = new_idle_pre_active + new_idle_post_active + (new_active_first,)
+        new_idle_post_active = tuple(i + 1 for i, idl in enumerate(idle) if (idl > active_sites[0]))
+        recovering_permutation = new_idle_pre_active + new_idle_post_active + (new_active_first,)
         active_system = (new_dim_active,)
 
-    t_state = subsystem_permutation(t_state, idle_system + active_system, recovering_permutaiton)
+    t_state = subsystem_permutation(t_state, idle_system + active_system, recovering_permutation)
     return t_state

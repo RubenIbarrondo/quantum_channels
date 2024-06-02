@@ -288,7 +288,7 @@ class TestStateTransformations_local_channel(unittest.TestCase):
         rho_exp = local_channel(rho_in, (dim1,)*n, active_sites, t_expand)
         np.testing.assert_array_almost_equal(rho_exp, rho_ref)
 
-def test_local_channel_dimchange_disjoint_reverseorder(self):
+    def test_local_channel_dimchange_disjoint_reverseorder(self):
         # A channel that changes dimension in disjoint positions preserving original order
         n = 3
         active_sites = (2, 0)
@@ -322,5 +322,39 @@ def test_local_channel_dimchange_disjoint_reverseorder(self):
                 rho_ref = np.kron(rho_ref, rho_arr[site])
         
         rho_exp = local_channel(rho_in, (dim1,)*n, active_sites, t_expand)
+        from src.pyqch.state_transformations import subsystem_permutation
         np.testing.assert_array_almost_equal(rho_exp, rho_ref)
 
+
+    def test_local_channel_dimchange_middlepostition(self):
+        # A channel that changes dimension in disjoint positions preserving original order
+        n = 3
+        active_site = 1
+        dim1 = 2
+        dim2 = dim1**2  # Has to be larger than dim1
+                    
+        t_expand = np.zeros((dim2, dim2, dim1, dim1))
+        for i in range(dim1):
+            for j in range(dim1):
+                t_expand[i,j,i,j] = 1
+        t_expand = t_expand.reshape((dim2**2, dim1**2))
+
+        vrho_arr = [np.random.random((dim1, dim1)) for _ in range(n)]
+        rho_arr = [ v @ v.T /np.trace(v @ v.T) for v in vrho_arr]
+        
+        rho_in = 1
+        for rho_site in rho_arr:
+            rho_in = np.kron(rho_in, rho_site)
+
+        rho_active = rho_arr[active_site]
+        rho_active_ref = (t_expand @ rho_active.reshape(dim1**2)).reshape((dim2, dim2))
+        
+        rho_ref = 1
+        for site in range(n):
+            if site == active_site:
+                rho_ref = np.kron(rho_ref, rho_active_ref)
+            else:
+                rho_ref = np.kron(rho_ref, rho_arr[site])
+        
+        rho_exp = local_channel(rho_in, (dim1,)*n, active_site, t_expand)
+        np.testing.assert_array_almost_equal(rho_exp, rho_ref)

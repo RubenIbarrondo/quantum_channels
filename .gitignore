@@ -3,3 +3,4 @@ tmp/
 .DS_Store
 .venv
 docs/_build
+src/pyqch.egg-info
