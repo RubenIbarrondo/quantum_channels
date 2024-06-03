@@ -42,7 +42,7 @@ def subsystem_reshape(state: np.ndarray, system: tuple[int]) -> np.ndarray:
         else:
             raise ve
 
-def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tuple[int]) -> np.ndarray:
+def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tuple[int], inverse: bool = False) -> np.ndarray:
     """
     Performs the permutation of the subsystems on the state.
 
@@ -55,6 +55,8 @@ def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tu
         dimension of the constituent subsystems.
     permutation : tuple[int]
         The permutation that maps i to permutation[i].
+    inverse : bool
+        Whether to perform the inverse of the permutation.
 
     Returns
     -------
@@ -74,7 +76,15 @@ def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tu
     state = subsystem_reshape(state, system)
     subsystem_num = len(system)
     
-    state = np.transpose(state, permutation + tuple(p+subsystem_num for p in permutation))
+    if not inverse:
+        perm = [0] * len(permutation)
+        for i in range(len(permutation)):
+            perm[permutation[i]] = i
+        perm = tuple(perm)
+    else:
+        perm = permutation
+
+    state = np.transpose(state, perm + tuple(p+subsystem_num for p in perm))
     
     return state.reshape((dim, dim))
 
@@ -148,18 +158,14 @@ def local_channel(state: np.ndarray, system: tuple[int], active_sites: tuple[int
     # Apply a permutation to the state so that the idle subsystems are in the initial
     # position and the active sites are ordered as in active_sites
     idle = tuple(i_s for i_s in range(len(system)) if i_s not in active_sites)
-    inv_perm = idle + active_sites  # inverse of idle | active ordered as in active_sites
-    perm = [0] * len(inv_perm)      # idle | active ordered as in active_sites
-    for i in range(len(inv_perm)):
-        perm[inv_perm[i]] = i
-    perm = tuple(perm)
+    inv_perm = idle + active_sites  # inverse of (idle | active ordered as in active_sites)
 
-    state = subsystem_permutation(state, system, perm)
+    state = subsystem_permutation(state, system, idle + active_sites, inverse=True)
     
     # Get an effective bipartition between the sites that are idle and the
     # sites where the channel acts
-    bipartition = (np.prod([system[i] for i in idle]),
-                   np.prod([system[i] for i in active_sites]))
+    bipartition = (int(np.prod([system[i] for i in idle])),
+                   int(np.prod([system[i] for i in active_sites])))
     rstate = subsystem_reshape(state, bipartition)
 
     # Acting with the channel only on the second subsystem
