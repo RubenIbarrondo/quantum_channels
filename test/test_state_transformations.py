@@ -358,3 +358,15 @@ class TestStateTransformations_local_channel(unittest.TestCase):
         
         rho_exp = local_channel(rho_in, (dim1,)*n, active_site, t_expand)
         np.testing.assert_array_almost_equal(rho_exp, rho_ref)
+
+    def test_local_channel_tensor_replace_should_replace(self):
+        dim = 2
+        n = 4
+        replacer = cf.depolarizing(dim, 1.0)
+
+        rho = np.zeros((dim**n, dim**n))
+        rho[1,1] = 1
+        for i in range(n):
+            rho = local_channel(rho, (dim,)*n, i, replacer)
+        np.testing.assert_array_almost_equal(rho, np.identity(dim**n) / (dim**n))
+
