@@ -140,7 +140,7 @@ def depolarizing(dim: int, p: float, r: np.ndarray = None) -> np.ndarray:
     if p == 1:
         transfer_matrix = np.outer(vr, max_entang)
     elif p == 0:
-        transfer_matrix = max_entang
+        transfer_matrix = np.identity(dim ** 2)
     else:
         transfer_matrix = (1-p) * np.identity(dim**2, dtype=complex)
         transfer_matrix += p * np.outer(vr, max_entang)
