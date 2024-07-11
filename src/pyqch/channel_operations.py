@@ -204,3 +204,15 @@ def fixed_points(t:np.ndarray, tol:float=1e-6) -> np.ndarray:
         # we have to ensure positivity first.
         # Then normalize
         raise NotImplementedError(no_multi_fp_msg)
+
+
+def twirling(t: np.ndarray,
+             r_in: list[np.ndarray], r_out: list[np.ndarray]):
+    # r_in, r_out: and output representation of a finite group with each element is labeled by an integer
+    # There should be a more efficient way...
+    if len(r_in) != len(r_out):
+        raise ValueError("If finite with list representation, r_in and r_out must have same size.")
+    t_twirl = np.mean([np.kron(r_out[g].T.conj(), r_out[g].conj()) 
+                       @ t @ 
+                       np.kron(r_in[g], r_in[g].T)  for g in range(len(r_in))], axis=0)
+    return t_twirl
