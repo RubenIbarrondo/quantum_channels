@@ -163,4 +163,14 @@ class TestChannelFamilies(unittest.TestCase):
         p_out = classical_permutation(dim, perm) @ p_in
 
         np.testing.assert_almost_equal(p_out, p_out_ref)
+    
+    def test_transposition(self):
+        from pyqch.channel_families import transposition
+
+        dim = 3
+        rho_in = np.random.default_rng(123).random((dim, dim))
+
+        trans = transposition(dim)
+        rho_out = (trans @ rho_in.reshape((dim**2))).reshape((dim, dim))
+        np.testing.assert_array_almost_equal(rho_out, rho_in.T)
 

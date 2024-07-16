@@ -4,3 +4,4 @@ tmp/
 .venv
 docs/_build
 src/pyqch.egg-info
+build/

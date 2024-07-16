@@ -211,3 +211,39 @@ class TestChannelOperations(unittest.TestCase):
 
         self.assertEqual(tensor_3.shape, (dim**(2*3), dim**(2*3)))
         self.assertEqual(tensor_3.dtype, (tdepol[0,0]*tdephas[0,0]*tu[0,0]).dtype)
+
+
+
+class TestChannelOperations_DoeblinCoefficient(unittest.TestCase):
+
+
+    def test_global_depolarizing(self):
+        from pyqch import channel_families as cf
+        from pyqch.channel_operations import doeblin_coefficient
+        dim = 3
+        points = 10
+        p_arr = np.linspace(0.1, .9, points)
+        alpha_arr = np.zeros(points)
+
+        for i_p, p in enumerate(p_arr):
+            depol = cf.depolarizing(dim, p)
+
+            alpha_arr[i_p] = doeblin_coefficient(depol)
+
+        np.testing.assert_array_almost_equal(p_arr, alpha_arr, decimal=4)
+    
+    def test_global_transpose_depolarizing(self):
+        from pyqch import channel_families as cf
+        from pyqch.channel_operations import doeblin_coefficient
+
+        dim = 3
+        points = 10
+        p_arr = np.linspace(dim/(dim+1), 1., points)
+        alpha_arr = np.zeros(points)
+
+        for i_p, p in enumerate(p_arr):
+            depol = cf.transposition(dim) @ cf.depolarizing(dim, p)
+
+            alpha_arr[i_p] = doeblin_coefficient(depol, transpose=True)
+
+        np.testing.assert_array_almost_equal(p_arr, alpha_arr, decimal=4)

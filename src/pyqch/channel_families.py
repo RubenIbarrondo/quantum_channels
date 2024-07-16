@@ -374,3 +374,31 @@ def probabilistic_unitaries(dim:int, p_arr:np.ndarray, u_arr:np.ndarray) -> np.n
      [0.5 0.  0.  0.5]]
     """
     return (np.einsum("m,mpi,mqj->pqij", p_arr, u_arr, u_arr.conj())).reshape((dim**2, dim**2))
+
+
+def transposition(dim: int, u: np.ndarray = None) -> np.ndarray:
+    """
+    Returns a transition matrix for the transposition operator. This is positive but
+    not completely positive, thus it is not a quantum channel.
+
+    Parameters
+    ----------
+    dim : int
+        The dimension of the Hilbert space.
+    u : np.ndarray or None
+        Basis in which the transposition is performed, if None the canonical basis is used.
+        Defaults to None.
+    
+    Returns
+    -------
+    np.ndarray
+        The transition matrix for the transposition.
+    """
+
+    tmat = np.identity(dim**2).reshape((dim,)*4)
+    tmat = np.einsum("ijkl->jikl", tmat).reshape((dim**2, dim**2))
+    
+    if u is None:
+        return tmat
+    else:
+        return np.kron(u.T.conj(), u.T) @ tmat @ np.kron(u, u.conj())
