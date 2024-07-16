@@ -340,22 +340,3 @@ def doeblin_coefficient(channel: np.ndarray, transpose: bool = False, subspace_p
         return prob.value
     else:
         return None
-    
-if __name__ == "__main__":
-
-    dim = 5
-    d1 = dim
-    p = .3
-
-    pw = np.zeros((dim, dim))
-    dimw = 3
-    pw[:dimw, :dimw] = np.eye(dimw)
-    
-    channel = cf.depolarizing(dim, p)
-    #channel = np.kron(pw, pw.conj()) + np.outer(((np.eye(d1)-pw)/(d1-np.trace(pw))).reshape((d1**2,)), (np.eye(d1) - pw).reshape((d1**2,)))
-
-    pw_restrict = np.eye(d1)-pw
-    alpha = doeblin_coefficient(channel)
-    alpha1= doeblin_coefficient(channel, subspace_projection= pw_restrict)
-    
-    print(f"a = {alpha:.3f}\na1 = {alpha1:.3f}")
