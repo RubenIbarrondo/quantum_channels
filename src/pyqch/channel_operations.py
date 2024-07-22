@@ -312,7 +312,11 @@ def doeblin_coefficient(channel: np.ndarray, transpose: bool = False, subspace_p
     else:
         transpose = cf.transposition(d2)
         J = choi_state(transpose @ channel)
-    
+
+    # Restrict to the subspace projection if needed
+    if subspace_projection is not None:
+        J = np.kron(np.eye(d2), subspace_projection) @ J @ np.kron(np.eye(d2), subspace_projection)
+
     # Define the identity matrix I1 of dimension d1 or the subspace projection
     if subspace_projection is None:
         I1 = np.eye(d1)
