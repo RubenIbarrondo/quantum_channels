@@ -56,3 +56,11 @@ pyqch.state\_families module
    :members:
    :undoc-members:
    :show-inheritance:
+
+pyqch.state\_transformations module
+----------------------------
+
+.. automodule:: pyqch.state_transformations
+   :members:
+   :undoc-members:
+   :show-inheritance:
