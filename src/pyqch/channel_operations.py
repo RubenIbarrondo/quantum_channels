@@ -9,6 +9,8 @@ products of channel representations, and finding fixed points of a channel.
 
 import numpy as np
 from scipy import linalg
+import cvxpy as cp
+from pyqch import channel_families as cf
 
 
 def choi_state(t:np.ndarray) -> np.ndarray:
@@ -204,3 +206,141 @@ def fixed_points(t:np.ndarray, tol:float=1e-6) -> np.ndarray:
         # we have to ensure positivity first.
         # Then normalize
         raise NotImplementedError(no_multi_fp_msg)
+
+
+def twirling(t: np.ndarray, r_in: list[np.ndarray], r_out: list[np.ndarray]):
+    """
+    Applies a twirling operation to a quantum channel.
+
+    The input is two representations of the finite group G, given as arrays of unitary matrices.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        The transition matrix representing the quantum channel.
+    r_in : list of np.ndarray
+        Input representation of the finite group with each element labeled by an integer.
+    r_out : list of np.ndarray
+        Output representation of the finite group with each element labeled by an integer.
+
+    Returns
+    -------
+    np.ndarray
+        The transition matrix of the twirled quantum channel.
+
+    Raises
+    ------
+    ValueError
+        If r_in and r_out do not have the same size.
+
+    Examples
+    --------
+    >>> from channel_operations import twirling
+    >>> from random_generators import channel
+    >>> t = channel(2, k_rank = 1)
+    >>> r_in = [np.eye(2), np.array([[0, 1], [1, 0]])]
+    >>> r_out = [np.eye(2), np.array([[0, -1j], [1j, 0]])]
+    >>> t_twirl = twirling(t, r_in, r_out)
+    >>> print(t_twirl)
+
+    Notes
+    -----
+    This function applies a twirling operation, which averages the quantum channel over a group of unitary transformations.
+
+    .. math::
+
+        T_G(\mathcal{E})(\cdot) = \frac{1}{|G|} \sum_{g \in G} R_{out}(g^{-1}) \mathcal{E}(R_{in}(g) \cdot R_{in}(g)^\dagger) R_{out}(g^{-1})^\dagger
+
+    """
+    # r_in, r_out: and output representation of a finite group with each element is labeled by an integer
+    # There should be a more efficient way...
+    if len(r_in) != len(r_out):
+        raise ValueError("If finite with list representation, r_in and r_out must have same size.")
+    t_twirl = np.mean([np.kron(r_out[g].T.conj(), r_out[g].conj()) 
+                       @ t @ 
+                       np.kron(r_in[g], r_in[g].T)  for g in range(len(r_in))], axis=0)
+    return t_twirl
+
+
+def doeblin_coefficient(channel: np.ndarray, transpose: bool = False, subspace_projection: np.ndarray = None):
+    """
+    Computes the Doeblin coefficient of a quantum channel.
+
+    The Doeblin coefficient is the maximum erasure probability for which an erasure channel 
+    can be degraded into the given channel. This implementation uses the SDP construction 
+    described in reference [1].
+
+    Parameters
+    ----------
+    channel : np.ndarray
+        The transition matrix representing the quantum channel.
+    transpose : bool, optional
+        Whether to check transpose-degradability instead of the usual degradability.
+        Defaults to False.
+    subspace_projection : np.ndarray, optional
+        An orthogonal projector into a subspace of dimension at least 2. If provided, 
+        it restricts the search for the coefficient to that subspace. Defaults to None.
+
+    Returns
+    -------
+    float
+        The Doeblin coefficient of the quantum channel. Returns None if the problem is 
+        infeasible or unbounded.
+
+    Notes
+    -----
+    This function implements the SDP (Semidefinite Programming) construction given 
+    in reference [1] to find the Doeblin coefficient.
+
+    The subspace restriciton is not detailed in [1].
+
+    See Also
+    --------
+    choi_state : Function to compute the Choi state of the channel.
+    channel_families.transposition : Function to obtain the transition matrix of matrix transposition.
+
+    References
+    ----------
+    [1] : C. Hirche (2024), "Quantum Doeblin coefficients: A simple upper bound on contraction
+    coefficients" (arXiv: 2405.00105)
+    """
+
+    d1, d2 = int(np.sqrt(channel.shape[1])), int(np.sqrt(channel.shape[0]))
+
+    if not transpose:
+        J = choi_state(channel)
+    else:
+        transpose = cf.transposition(d2)
+        J = choi_state(transpose @ channel)
+
+    # Restrict to the subspace projection if needed
+    if subspace_projection is not None:
+        J = np.kron(np.eye(d2), subspace_projection) @ J @ np.kron(np.eye(d2), subspace_projection)
+
+    # Define the identity matrix I1 of dimension d1 or the subspace projection
+    if subspace_projection is None:
+        I1 = np.eye(d1)
+    else:
+        I1 = subspace_projection
+
+    # Define the optimization variable sigma with shape (d2, d2)
+    sigma = cp.Variable((d2, d2), PSD=True)
+
+    # Define the objective function to maximize Tr(sigma)
+    objective = cp.Maximize(cp.trace(sigma))
+
+    # Define the constraint: kron(sigma, I1/d1) <= J
+    kron_product = cp.kron(sigma, I1 / d1)
+    constraints = [J - kron_product >> 0]
+
+    # Formulate the problem
+    prob = cp.Problem(objective, constraints)
+
+    # Solve the problem
+    prob.solve()
+
+    # Check if the problem is solved successfully
+    if prob.status not in ["infeasible", "unbounded"]:
+        return prob.value
+    else:
+        return None

@@ -89,7 +89,7 @@ def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tu
     return state.reshape((dim, dim))
 
 
-def partial_trace(state: np.ndarray, system: tuple[int], traced_sites: tuple[int] | int) -> np.ndarray:
+def partial_trace(state: np.ndarray, system: tuple[int], traced_sites: tuple[int] | int, keep_sites: bool = False) -> np.ndarray:
     """
     Computes the partial trace on the state.
 
@@ -98,56 +98,66 @@ def partial_trace(state: np.ndarray, system: tuple[int], traced_sites: tuple[int
     state : np.ndarray
         Density matrix of the state to be traced.
     system : tuple[int]
-        The system structure represented by a tupe with the local
+        The system structure represented by a tuple with the local
         dimension of the constituent subsystems.
     traced_sites : tuple[int] | int
         Site(s) in the system structure that will be traced out.
+    keep_sites : bool (optional)
+        If True, `traced_sites` specifies the subsystems to keep rather than trace out. Defaults to False.
 
     Returns
     -------
     np.ndarray
         The density matrix of the state resulting from the partial trace.
     """
-    
-    # Other approach coul be to apply a permutation and then trace by biparititon
-    subsystem_num = len(system)
-    ptrstate = subsystem_reshape(state, system)
-
-    if isinstance(traced_sites, int):
-        ptrstate = np.trace(ptrstate, axis1=traced_sites, axis2=traced_sites+subsystem_num)
-        new_dim = np.prod([s for i_s, s in enumerate(system) if i_s != traced_sites])
+    if keep_sites:
+        if isinstance(traced_sites, (int, np.integer)):
+            new_traced_out = list(range(len(system)))
+            del new_traced_out[traced_sites]
+            new_traced_out = tuple(new_traced_out)
+        else:
+            new_traced_out = tuple([i for i in range(len(system)) if i not in traced_sites])
+        return partial_trace(state, system, new_traced_out, keep_sites=False)
     else:
-        for tr_site in sorted(traced_sites, reverse=True):
-            ptrstate = np.trace(ptrstate, axis1=tr_site, axis2=tr_site+subsystem_num)
-            subsystem_num -= 1
-    
-        new_dim = np.prod([s for i_s, s in enumerate(system) if i_s not in traced_sites])
-    return ptrstate.reshape((new_dim, new_dim))
+        # Other approach could be to apply a permutation and then trace by bipartition
+        subsystem_num = len(system)
+        ptrstate = subsystem_reshape(state, system)
+
+        if isinstance(traced_sites, (int, np.integer)):
+            ptrstate = np.trace(ptrstate, axis1=traced_sites, axis2=traced_sites+subsystem_num)
+            new_dim = np.prod([s for i_s, s in enumerate(system) if i_s != traced_sites])
+        else:
+            for tr_site in sorted(traced_sites, reverse=True):
+                ptrstate = np.trace(ptrstate, axis1=tr_site, axis2=tr_site+subsystem_num)
+                subsystem_num -= 1
+        
+            new_dim = np.prod([s for i_s, s in enumerate(system) if i_s not in traced_sites])
+        return ptrstate.reshape((new_dim, new_dim))
 
 
 def local_channel(state: np.ndarray, system: tuple[int], active_sites: tuple[int] | int, channel: np.ndarray) -> np.ndarray:
     """
-    Applies the channel to the satate in the chosen sites.
+    Applies the channel to the state in the chosen sites.
 
     Parameters
     ----------
     state : np.ndarray
         Density matrix of the state.
     system : tuple[int]
-        The system structure represented by a tupe with the local
+        The system structure represented by a tuple with the local
         dimension of the constituent subsystems.
     active_sites : tuple[int] | int
         The sites in which the channel acts on. If the channel's input and output dimensions
-        are equal, the order of the sites is used to arrange the sites before applaying the channel
+        are equal, the order of the sites is used to arrange the sites before applying the channel
         and recover them back. If the channel's output dimension differs from the input active_sites collapse
-        to a single site in the relative position correspoinding to active_sites[0].
+        to a single site in the relative position corresponding to active_sites[0].
     channel : np.ndarray
         The transition matrix of the quantum channel.
 
     Returns
     -------
     np.ndarray
-        Density matrix of the state resulting from applyting the channel.
+        Density matrix of the state resulting from applying the channel.
     """
     
     is_square_channel = channel.shape[0] == channel.shape[1]
@@ -192,3 +202,55 @@ def local_channel(state: np.ndarray, system: tuple[int], active_sites: tuple[int
 
     t_state = subsystem_permutation(t_state, idle_system + active_system, recovering_permutation)
     return t_state
+
+def twirling(state: np.ndarray,
+             r: list[np.ndarray] = None,
+             decomposition: list[np.ndarray] = None):
+    if r is not None:
+        # r representation of a finite group with each element is labeled by an integer
+        # There should be a more efficient way...
+        state_twirl = np.mean([r[g] @ state @ r[g].conj().T for g in range(len(r))], axis=0)
+
+    elif decomposition is not None:
+        # decomposition = [W, d_arr, m_arr]
+        W, d_arr, m_arr = decomposition
+        
+        # W: is a unitary transformation or 1, standing for the identity.
+        assert (isinstance(W, int) and W == 1) or np.allclose(W @ W.T.conj(), np.identity(W.shape[0]))
+        
+        # d_arr are the dimensions of the subsystems of the subspaces where the group acts non-trivially
+        # m_arr are the dimension where they act trivially
+        # For consistency
+        assert d_arr.dtype == int and m_arr.dtype == int
+        assert len(d_arr) == len(m_arr)
+        assert (isinstance(W, int) and W == 1) or (d_arr @ m_arr == W.shape[0])
+
+        # Map the state to the basis of the decomposition
+        if not isinstance(W, int):
+            state = W.T.conj() @ state @ W
+        
+        # Go blockwise
+        state_twirl = np.zeros_like(state, dtype=complex)
+        for i, dimi in enumerate(zip(d_arr, m_arr)):
+            di, mi = dimi
+            di_less = d_arr[:i] @ m_arr[:i] if i > 0 else 0
+
+            # Get the state corresponding to the i-th block
+            rhoi = state[di_less: di_less + di * mi,
+                         di_less: di_less + di * mi]
+
+            # Get the reduced state of the part that is invariant
+            rho_mi = partial_trace(rhoi, (di, mi), 0)
+
+            # Get the full state of the site by the tensor product with the identity / di
+            for j_di in range(di):
+                state_twirl[di_less + j_di * mi: di_less + (j_di + 1) * mi,
+                            di_less + j_di * mi: di_less + (j_di + 1) * mi] = rho_mi / di
+        
+        # Back to the original basis
+        if not isinstance(W, int):
+            state_twirl = W @ state_twirl @ W.T.conj()
+    else:
+        raise ValueError("Either r or decomposition have to be provided, but both were None.")
+    
+    return state_twirl

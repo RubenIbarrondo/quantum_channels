@@ -35,9 +35,12 @@ def gm_el(dim: int) -> np.ndarray:
     describe higher-dimensional systems in quantum mechanics [1]_. They form a 
     complete, orthogonal basis for the space of Hermitian matrices.
 
+    The d>3 generalization is taken as in [2]_ (Eq. 8).
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gell-Mann_matrices
+    .. [2] Jens Siewert 2022 J. Phys. Commun. 6 055014
 
     Examples
     --------
@@ -70,10 +73,10 @@ def gm_el(dim: int) -> np.ndarray:
                 # y's
                 ugm[k, l, l, k] = -1j/np.sqrt(2)
                 ugm[l, k, l, k] = 1j/np.sqrt(2)
-
-                # z's
-                ugm[l, l, l, l] = - l / np.sqrt(l*(l+1))
-                ugm[np.arange(l), np.arange(l), l, l] = 1 / np.sqrt(l*(l+1))
+            
+            # z's
+            ugm[l, l, l, l] = - l / np.sqrt(l*(l+1))
+            ugm[np.arange(l), np.arange(l), l, l] = 1 / np.sqrt(l*(l+1))
                 
         ugm = ugm.reshape((dim**2, dim**2))
         return ugm

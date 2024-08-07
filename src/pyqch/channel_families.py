@@ -11,6 +11,82 @@ POVMs, probabilistic damping, and probabilistic unitaries.
 
 import numpy as np
 
+def amplitude_damping(dim: int, lamb: float, x: np.ndarray | int = 1, y: np.ndarray | int = 0) -> np.ndarray:
+    """
+    Amplitude damping in arbitrary dimension.
+
+    It describes the coherent damping from state |x> to |y>.
+    
+    Reduces to the usual qubit amplitude damping for dim=0, x=1, y=0.
+
+    Parameters
+    ----------
+    dim : int
+        The dimension of the Hilbert space.
+    lamb : float
+        The damping parameter ranging from 0 to 1.
+    x : np.ndarray | int, optional
+        The origin state for the damping, by default 1. If int, it is interpreted as a basis state.
+    y : np.ndarray | int, optional
+        The target state for the damping, by default 0. If int, it is interpreted as a basis state.
+
+    Returns
+    -------
+    np.ndarray
+        The transition matrix representing the amplitude damping channel.
+
+    Notes
+    -----
+    For the general d-dimensional formulation we considered Definition 1 in [3]_.
+
+    References
+    ----------
+    .. [3] Frederik vom Ende, (2024) "A Sufficient Criterion for Divisibility of Quantum Channels". arXiv: 2407.17103
+
+    Raises
+    ------
+    ValueError
+        If lambda not in [0, 1]; x or y are int and are not in [0, dim), or are np.ndarray and shape not compatible with (dim,1).
+    """
+    # Assert argument integrity
+    if not (0<= lamb <= 1):
+        raise ValueError(f"Invalid value for argument lamb, {lamb} does not satisfy 0 <= lamb <= 1.")
+    if isinstance(x, (int, np.integer)):
+        if not (0<= x < dim):
+            raise ValueError(f"Invalid value for argument x, {x} does not satisfy 0 <= x <= dim={dim}.")
+    else:
+        if not (x.shape == (dim, 1) or x.shape == (dim,)):
+            raise ValueError(f"Invalid shape for array x, {x.shape} not compatible with ({dim},).")
+    if isinstance(y, (int, np.integer)):
+        if not (0<= y < dim):
+            raise ValueError(f"Invalid value for argument y, {y} does not satisfy 0 <= y <= dim={dim}.")
+    else:
+        if not (y.shape == (dim, 1) or y.shape == (dim,)):
+            raise ValueError(f"Invalid shape for array y, {y.shape} not compatible with ({dim},).")
+
+    # Define the Kraus operators
+    Klamb = np.identity(dim, dtype=complex)
+    Llamb = np.zeros((dim, dim), dtype=complex)
+
+    if isinstance(x, (int, np.integer)):
+        Klamb[x, x] = np.sqrt(1-lamb)
+        if isinstance(y, (int, np.integer)):
+            Llamb[y, x] = np.sqrt(lamb)
+        else:
+            Llamb[:, x] = np.sqrt(lamb) * y
+   
+    else:
+        Klamb -= (1 - np.sqrt(1-lamb)) * np.outer(x, x.conj())
+        if isinstance(y, (int, np.integer)):
+            Llamb[y, :] = np.sqrt(lamb) * x.conj()
+        else:
+            Llamb = np.sqrt(lamb) * np.outer(y, x.conj())
+
+    # Construct the transfer matrix
+    mat = np.kron(Klamb, Klamb.conj()) + np.kron(Llamb, Llamb.conj())
+
+    return mat
+
 
 def classical_permutation(dim: int, perm: list) -> np.ndarray:
     """
@@ -44,7 +120,7 @@ def classical_permutation(dim: int, perm: list) -> np.ndarray:
     return mat
 
 
-def dephasing(dim: int, g: float, u: np.ndarray = None) -> np.ndarray:
+def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None) -> np.ndarray:
     """
     Returns the transition matrix for a dephasing channel.
 
@@ -52,8 +128,11 @@ def dephasing(dim: int, g: float, u: np.ndarray = None) -> np.ndarray:
     ----------
     dim : int
         The dimension of the Hilbert space.
-    g : float
-        Dephasing strength.
+    g : float | np.ndarray
+        Dephasing strength. If float, it is used as an uniform damping for all
+        off-diagonal terms; if np.ndarray, g[i,j] describes the damping of the
+        element (i,j).
+        The validity of g to define an appropriate dephasing channel is not verified.
     u : np.ndarray, optional
         The unitary matrix defining the basis in which dephasing occurs.
         Defaults to the identity matrix.
@@ -66,9 +145,12 @@ def dephasing(dim: int, g: float, u: np.ndarray = None) -> np.ndarray:
     Notes
     -----
     This function implements dephasing by dampening the off-diagonal terms 
-    in a given basis. For generalized dephasing, one should define the 
-    corresponding PVMs and include an identity with some dampening, then 
-    pass them to the `povm` function.
+    in a given basis. If g is a matrix, it should be real, symmetric, positive
+    semi-definite and all diagonal terms equal to one.
+    
+    For other generalized dephasing, one could define the corresponding 
+    PVMs and include an identity with some dampening, then pass them to 
+    the `povm` function.
 
     Examples
     --------
@@ -89,14 +171,21 @@ def dephasing(dim: int, g: float, u: np.ndarray = None) -> np.ndarray:
     """
     a = np.identity(dim)
 
-    if u is None:
-        tdeph = np.einsum("pq,pi,qj->pqij", a, a, a)
-        tid = np.einsum("pi,qj->pqij", a, a)
-        return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
-    else:
-        tdeph = np.einsum("sp,si,sq,sj->pqij", u.conj(), u, u, u.conj())
-        tid = np.einsum("pi,qj->pqij", a, a)
-        return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
+    if np.isscalar(g):
+                
+        if u is None:
+            tdeph = np.einsum("pq,pi,qj->pqij", a, a, a)
+            tid = np.einsum("pi,qj->pqij", a, a)
+            return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
+        else:
+            tdeph = np.einsum("sp,si,sq,sj->pqij", u.conj(), u, u, u.conj())
+            tid = np.einsum("pi,qj->pqij", a, a)
+            return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
+    else: 
+        if u is None:
+            return np.einsum('pi,qj,ij->pqij', a, a, g).reshape((dim**2, dim**2))
+        else:
+            return np.einsum('rp,ri,sq,sj,rs->pqij', u.conj(), u, u, u.conj(), g).reshape((dim**2, dim**2))
     
 
 def depolarizing(dim: int, p: float, r: np.ndarray = None) -> np.ndarray:
@@ -200,9 +289,10 @@ def initializer(dim: int, states: np.ndarray, mode='c-q') -> np.ndarray:
         The dimension of the Hilbert space.
     states : np.ndarray
         Array of states defining the choices for initialization.
-        The expected shape is (number of states, dim, dim), such that
-        states[i] represents the state prepared when the classical
-        variable takes the value i.
+        The expected shape is either (number of states, dim, dim) or
+        (number of states, dim) , such that states[i] represents the
+        state prepared when the classical variable takes the value i (described
+        as a density matrix or as a vector).
     mode : str, optional
         Mode of initialization ('c-q' for classical to quantum,
         'c-qc' for classical to quantum and classical, 'q-q' for 
@@ -226,23 +316,26 @@ def initializer(dim: int, states: np.ndarray, mode='c-q') -> np.ndarray:
      [0.  0.5]
      [0.  0.5]]
     """
-    m = states.shape[0]
-    a = np.identity(m)
+    if len(states.shape) == 2:
+        states_as_dm = np.array([np.outer(s, s.conj()) for s in states])
+        return initializer(dim=dim, states=states_as_dm, mode=mode)
+    else:
+        m = states.shape[0]
+        a = np.identity(m)
 
-    if mode == 'q-qc':
-        mat = np.einsum('ij,ik,kl,kpq->ipjqkl', a, a, a, states)
-        mat = mat.reshape(((m*dim)**2, m**2))
-    elif mode == 'q-q':
-        mat = np.einsum('kl,kpq->pqkl', a, states)
-        mat = mat.reshape((dim**2, m**2))
+        if mode == 'q-qc':
+            mat = np.einsum('ij,ik,kl,kpq->ipjqkl', a, a, a, states)
+            mat = mat.reshape(((m*dim)**2, m**2))
+        elif mode == 'q-q':
+            mat = np.einsum('kl,kpq->pqkl', a, states)
+            mat = mat.reshape((dim**2, m**2))
 
-    elif mode == 'c-qc':
-        mat = np.einsum('ij,ik,kpq->ipjqk', a, a, states)
-        mat = mat.reshape(((m*dim)**2, m))
-    elif mode == 'c-q':
-        mat = np.einsum('kpq->pqk', states)
-        mat = mat.reshape((dim**2, m))
-    
+        elif mode == 'c-qc':
+            mat = np.einsum('ij,ik,kpq->ipjqk', a, a, states)
+            mat = mat.reshape(((m*dim)**2, m))
+        elif mode == 'c-q':
+            mat = np.einsum('kpq->pqk', states)
+            mat = mat.reshape((dim**2, m))
     return mat
 
 
@@ -374,3 +467,31 @@ def probabilistic_unitaries(dim:int, p_arr:np.ndarray, u_arr:np.ndarray) -> np.n
      [0.5 0.  0.  0.5]]
     """
     return (np.einsum("m,mpi,mqj->pqij", p_arr, u_arr, u_arr.conj())).reshape((dim**2, dim**2))
+
+
+def transposition(dim: int, u: np.ndarray = None) -> np.ndarray:
+    """
+    Returns a transition matrix for the transposition operator. This is positive but
+    not completely positive, thus it is not a quantum channel.
+
+    Parameters
+    ----------
+    dim : int
+        The dimension of the Hilbert space.
+    u : np.ndarray or None
+        Basis in which the transposition is performed, if None the canonical basis is used.
+        Defaults to None.
+    
+    Returns
+    -------
+    np.ndarray
+        The transition matrix for the transposition.
+    """
+
+    tmat = np.identity(dim**2).reshape((dim,)*4)
+    tmat = np.einsum("ijkl->jikl", tmat).reshape((dim**2, dim**2))
+    
+    if u is None:
+        return tmat
+    else:
+        return np.kron(u.T.conj(), u.T) @ tmat @ np.kron(u, u.conj())

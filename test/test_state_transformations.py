@@ -136,6 +136,10 @@ class TestStateTransformations(unittest.TestCase):
         rho_ptr = partial_trace(rho, (dim,)*n, (0, 2))
         np.testing.assert_array_almost_equal(rho_ptr, rho_arr[1])
 
+        # With keep_sites instead
+        rho_ptr = partial_trace(rho, (dim,)*n, 1, keep_sites=True)
+        np.testing.assert_array_almost_equal(rho_ptr, rho_arr[1])
+
         # 2 out of 3 in disjoint positions and unormalized
         dim = 2
         n = 3
@@ -164,11 +168,19 @@ class TestStateTransformations(unittest.TestCase):
         rho_ptr = partial_trace(rho, (dim,)*n, (0, 1))
         np.testing.assert_array_almost_equal(rho_ptr, rho_arr[2])
 
+        # With keep_sites instead
+        rho_ptr = partial_trace(rho, (dim,)*n, 2, keep_sites=True)
+        np.testing.assert_array_almost_equal(rho_ptr, rho_arr[2])
+
         # A maximally entangled state
         dim = 2
         vrho = np.identity(dim).reshape(dim**2)
         rho = np.outer(vrho, vrho) / dim
         rho_ptr = partial_trace(rho, (dim,dim), 1)
+        np.testing.assert_array_almost_equal(rho_ptr, np.identity(dim)/dim)
+
+        # With keep_sites instead
+        rho_ptr = partial_trace(rho, (dim, dim), 1, keep_sites=True)
         np.testing.assert_array_almost_equal(rho_ptr, np.identity(dim)/dim)
 
 
@@ -397,3 +409,76 @@ class TestStateTransformations_local_channel(unittest.TestCase):
             rho = local_channel(rho, (dim,)*n, i, replacer)
         np.testing.assert_array_almost_equal(rho, np.identity(dim**n) / (dim**n))
 
+
+class TestStateTransformations_twirling(unittest.TestCase):
+
+
+    def setUp(self):
+        from pyqch import random_generators as rg
+
+        def gen_states(dim, number):
+            for _ in range(number):
+                yield rg.state(dim)
+
+        self.gen_states = gen_states
+
+    def test_twirling_with_identity(self):
+        from pyqch import state_transformations as st
+
+        dim = 3
+        number = 5
+        r = [np.identity(dim)]
+
+        for arbpsi in self.gen_states(dim, number):
+            twirl_arbpsi = st.twirling(arbpsi, r)
+            np.testing.assert_array_almost_equal(twirl_arbpsi, arbpsi)
+    
+    def test_twirling_with_Paulis(self):
+        from pyqch import state_transformations as st
+
+        dim = 2
+        number = 5
+        r = [np.identity(dim),
+             np.array([[0,1],[1,0]]),
+             np.array([[0,-1j],[1j,0]]),
+             np.array([[1,0],[0,-1]])]
+
+        for arbpsi in self.gen_states(dim, number):
+            twirl_arbpsi = st.twirling(arbpsi, r)
+
+            np.testing.assert_array_almost_equal(twirl_arbpsi, np.identity(dim)/dim * np.trace(arbpsi))
+
+    def test_twirling_with_Haar(self):
+        from pyqch import state_transformations as st
+
+        dim = 5
+        number = 5
+        decomposition = [1, np.array([dim]), np.array([1])]
+
+        for arbpsi in self.gen_states(dim, number):
+            twirl_arbpsi = st.twirling(arbpsi, decomposition=decomposition)
+
+            np.testing.assert_array_almost_equal(twirl_arbpsi, np.identity(dim)/dim * np.trace(arbpsi))
+
+    def test_twirling_swap(self):
+        from pyqch import state_transformations as st
+
+        # Compare the decomposition picture with the explicit
+        dim = 3
+        number = 5
+
+        swap = np.identity(dim**2).reshape((dim, dim, dim, dim))
+        swap = np.einsum("ijkl->jikl", swap).reshape((dim**2, dim**2))
+
+        r = [np.identity(dim**2), swap]
+        vals, W = np.linalg.eigh(swap)
+        dim_plus = int(np.sum(vals > 0))
+        dim_minus = int(np.sum(vals < 0))
+        decomposition = [W, np.array([1, 1]), np.array([dim_minus, dim_plus])]
+
+        for arbpsi in self.gen_states(dim**2, number):
+            twirl1_arbpsi = st.twirling(arbpsi, r=r)
+
+            twirl2_arbpsi = st.twirling(arbpsi, decomposition=decomposition)
+
+            np.testing.assert_array_almost_equal(twirl1_arbpsi, twirl2_arbpsi)
