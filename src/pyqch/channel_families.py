@@ -289,9 +289,10 @@ def initializer(dim: int, states: np.ndarray, mode='c-q') -> np.ndarray:
         The dimension of the Hilbert space.
     states : np.ndarray
         Array of states defining the choices for initialization.
-        The expected shape is (number of states, dim, dim), such that
-        states[i] represents the state prepared when the classical
-        variable takes the value i.
+        The expected shape is either (number of states, dim, dim) or
+        (number of states, dim) , such that states[i] represents the
+        state prepared when the classical variable takes the value i (described
+        as a density matrix or as a vector).
     mode : str, optional
         Mode of initialization ('c-q' for classical to quantum,
         'c-qc' for classical to quantum and classical, 'q-q' for 
@@ -315,23 +316,26 @@ def initializer(dim: int, states: np.ndarray, mode='c-q') -> np.ndarray:
      [0.  0.5]
      [0.  0.5]]
     """
-    m = states.shape[0]
-    a = np.identity(m)
+    if len(states.shape) == 2:
+        states_as_dm = np.array([np.outer(s, s.conj()) for s in states])
+        return initializer(dim=dim, states=states_as_dm, mode=mode)
+    else:
+        m = states.shape[0]
+        a = np.identity(m)
 
-    if mode == 'q-qc':
-        mat = np.einsum('ij,ik,kl,kpq->ipjqkl', a, a, a, states)
-        mat = mat.reshape(((m*dim)**2, m**2))
-    elif mode == 'q-q':
-        mat = np.einsum('kl,kpq->pqkl', a, states)
-        mat = mat.reshape((dim**2, m**2))
+        if mode == 'q-qc':
+            mat = np.einsum('ij,ik,kl,kpq->ipjqkl', a, a, a, states)
+            mat = mat.reshape(((m*dim)**2, m**2))
+        elif mode == 'q-q':
+            mat = np.einsum('kl,kpq->pqkl', a, states)
+            mat = mat.reshape((dim**2, m**2))
 
-    elif mode == 'c-qc':
-        mat = np.einsum('ij,ik,kpq->ipjqk', a, a, states)
-        mat = mat.reshape(((m*dim)**2, m))
-    elif mode == 'c-q':
-        mat = np.einsum('kpq->pqk', states)
-        mat = mat.reshape((dim**2, m))
-    
+        elif mode == 'c-qc':
+            mat = np.einsum('ij,ik,kpq->ipjqk', a, a, states)
+            mat = mat.reshape(((m*dim)**2, m))
+        elif mode == 'c-q':
+            mat = np.einsum('kpq->pqk', states)
+            mat = mat.reshape((dim**2, m))
     return mat
 
 

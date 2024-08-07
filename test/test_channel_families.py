@@ -185,6 +185,29 @@ class TestChannelFamilies(unittest.TestCase):
 
         rho_out_ref = np.sum([p_in[k] * state_list[k] for k in range(len(state_list))], axis=0)
         np.testing.assert_almost_equal(rho_out, rho_out_ref)
+
+    def test_initializer_pure_states(self):
+        from  src.pyqch.channel_families import initializer
+
+        dim = 3
+        state_list = []
+        state_list.append(np.full(dim, 1/np.sqrt(dim)))
+        k2 = np.zeros(dim)
+        k2[0] = 1 / np.sqrt(dim)
+        k2[1] = 1 / np.sqrt(dim)
+        state_list.append(k2)
+        states = np.array(state_list)
+
+        # Define an input probability distribution
+        p_in = np.arange(1, 1+states.shape[0]) * 2 /states.shape[0]/(states.shape[0]+1)
+
+        init_mat = initializer(dim, states, mode='c-q')
+
+        rho_out = (init_mat @ p_in).reshape((dim, dim))
+
+        rho_out_ref = np.sum([p_in[k] * np.outer(state_list[k], state_list[k].conj())
+                              for k in range(len(state_list))], axis=0)
+        np.testing.assert_almost_equal(rho_out, rho_out_ref)
     
     def test_probabilistic_unitaries(self):
         from  src.pyqch.channel_families import probabilistic_unitaries
