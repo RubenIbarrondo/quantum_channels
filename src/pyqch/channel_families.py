@@ -120,7 +120,7 @@ def classical_permutation(dim: int, perm: list) -> np.ndarray:
     return mat
 
 
-def dephasing(dim: int, g: float, u: np.ndarray = None) -> np.ndarray:
+def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None) -> np.ndarray:
     """
     Returns the transition matrix for a dephasing channel.
 
@@ -128,8 +128,11 @@ def dephasing(dim: int, g: float, u: np.ndarray = None) -> np.ndarray:
     ----------
     dim : int
         The dimension of the Hilbert space.
-    g : float
-        Dephasing strength.
+    g : float | np.ndarray
+        Dephasing strength. If float, it is used as an uniform damping for all
+        off-diagonal terms; if np.ndarray, g[i,j] describes the damping of the
+        element (i,j).
+        The validity of g to define an appropriate dephasing channel is not verified.
     u : np.ndarray, optional
         The unitary matrix defining the basis in which dephasing occurs.
         Defaults to the identity matrix.
@@ -142,9 +145,12 @@ def dephasing(dim: int, g: float, u: np.ndarray = None) -> np.ndarray:
     Notes
     -----
     This function implements dephasing by dampening the off-diagonal terms 
-    in a given basis. For generalized dephasing, one should define the 
-    corresponding PVMs and include an identity with some dampening, then 
-    pass them to the `povm` function.
+    in a given basis. If g is a matrix, it should be real, symmetric, positive
+    semi-definite and all diagonal terms equal to one.
+    
+    For other generalized dephasing, one could define the corresponding 
+    PVMs and include an identity with some dampening, then pass them to 
+    the `povm` function.
 
     Examples
     --------
@@ -165,14 +171,21 @@ def dephasing(dim: int, g: float, u: np.ndarray = None) -> np.ndarray:
     """
     a = np.identity(dim)
 
-    if u is None:
-        tdeph = np.einsum("pq,pi,qj->pqij", a, a, a)
-        tid = np.einsum("pi,qj->pqij", a, a)
-        return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
-    else:
-        tdeph = np.einsum("sp,si,sq,sj->pqij", u.conj(), u, u, u.conj())
-        tid = np.einsum("pi,qj->pqij", a, a)
-        return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
+    if np.isscalar(g):
+                
+        if u is None:
+            tdeph = np.einsum("pq,pi,qj->pqij", a, a, a)
+            tid = np.einsum("pi,qj->pqij", a, a)
+            return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
+        else:
+            tdeph = np.einsum("sp,si,sq,sj->pqij", u.conj(), u, u, u.conj())
+            tid = np.einsum("pi,qj->pqij", a, a)
+            return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
+    else: 
+        if u is None:
+            return np.einsum('pi,qj,ij->pqij', a, a, g).reshape((dim**2, dim**2))
+        else:
+            return np.einsum('rp,ri,sq,sj,rs->pqij', u.conj(), u, u, u.conj(), g).reshape((dim**2, dim**2))
     
 
 def depolarizing(dim: int, p: float, r: np.ndarray = None) -> np.ndarray:

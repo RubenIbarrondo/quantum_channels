@@ -75,7 +75,7 @@ class TestChannelFamilies(unittest.TestCase):
         np.testing.assert_almost_equal(r_q,r_qc_q)
         np.testing.assert_almost_equal(r_c,r_qc_c)
 
-    def test_dephasing(self):
+    def test_dephasing_simple_computational(self):
         from  src.pyqch.channel_families import dephasing
         dim = 3
         g = .33
@@ -88,6 +88,81 @@ class TestChannelFamilies(unittest.TestCase):
 
         # Test the action of the channel
         dephas_mat = dephasing(dim, g)
+        rho_out = (dephas_mat @ rho_in.reshape(dim**2)).reshape((dim, dim))
+
+        np.testing.assert_almost_equal(rho_out, rho_out_ref)
+    
+    def test_dephasing_simple_arbbasis(self):
+        from  src.pyqch.channel_families import dephasing
+        from scipy.stats import unitary_group
+
+        dim = 3
+        g = .33
+        u = unitary_group(dim, seed=123).rvs()
+
+        # Create input state
+        rho_in = np.full((dim, dim), 1/dim)
+
+        # Create reference state
+        rho_out_ref = (1-g) * rho_in + g * (u.conj().T @ np.diag(np.diag( u @ rho_in @ u.T.conj())) @ u)
+
+        # Test the action of the channel
+        dephas_mat = dephasing(dim, g, u=u)
+        rho_out = (dephas_mat @ rho_in.reshape(dim**2)).reshape((dim, dim))
+
+        np.testing.assert_almost_equal(rho_out, rho_out_ref)
+
+    def test_dephasing_general_computational(self):
+        from  src.pyqch.channel_families import dephasing
+        dim = 3
+
+        # Generate a random positive definite matrix
+        g = np.random.random((dim, dim))
+        g = g @ g.T
+
+        # Normalize so that setting the diagonal elements to one is
+        # equivalent to adding a positive diagonal matrix
+        g /= np.max(np.diag(g))
+        for i in range(dim):
+            g[i, i] = 1
+
+        # Create input state
+        rho_in = np.full((dim, dim), 1/dim)
+
+        # Create reference state
+        rho_out_ref = g * rho_in
+
+        # Test the action of the channel
+        dephas_mat = dephasing(dim, g)
+        rho_out = (dephas_mat @ rho_in.reshape(dim**2)).reshape((dim, dim))
+
+        np.testing.assert_almost_equal(rho_out, rho_out_ref)
+    
+
+    def test_dephasing_general_arbbasis(self):
+        from  src.pyqch.channel_families import dephasing
+        from scipy.stats import unitary_group
+        dim = 3
+        u = unitary_group(dim, seed=123).rvs()
+    
+        # Generate a random positive definite matrix
+        g = np.random.random((dim, dim))
+        g = g @ g.T
+
+        # Normalize so that setting the diagonal elements to one is
+        # equivalent to adding a positive diagonal matrix
+        g /= np.max(np.diag(g))
+        for i in range(dim):
+            g[i, i] = 1
+
+        # Create input state
+        rho_in = np.full((dim, dim), 1/dim)
+
+        # Create reference state
+        rho_out_ref = u.T.conj() @ (g * (u @ rho_in @ u.conj().T)) @ u
+
+        # Test the action of the channel
+        dephas_mat = dephasing(dim, g, u=u)
         rho_out = (dephas_mat @ rho_in.reshape(dim**2)).reshape((dim, dim))
 
         np.testing.assert_almost_equal(rho_out, rho_out_ref)
