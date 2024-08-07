@@ -89,7 +89,7 @@ def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tu
     return state.reshape((dim, dim))
 
 
-def partial_trace(state: np.ndarray, system: tuple[int], traced_sites: tuple[int] | int) -> np.ndarray:
+def partial_trace(state: np.ndarray, system: tuple[int], traced_sites: tuple[int] | int, keep_sites: bool = False) -> np.ndarray:
     """
     Computes the partial trace on the state.
 
@@ -98,56 +98,66 @@ def partial_trace(state: np.ndarray, system: tuple[int], traced_sites: tuple[int
     state : np.ndarray
         Density matrix of the state to be traced.
     system : tuple[int]
-        The system structure represented by a tupe with the local
+        The system structure represented by a tuple with the local
         dimension of the constituent subsystems.
     traced_sites : tuple[int] | int
         Site(s) in the system structure that will be traced out.
+    keep_sites : bool (optional)
+        If True, `traced_sites` specifies the subsystems to keep rather than trace out. Defaults to False.
 
     Returns
     -------
     np.ndarray
         The density matrix of the state resulting from the partial trace.
     """
-    
-    # Other approach coul be to apply a permutation and then trace by biparititon
-    subsystem_num = len(system)
-    ptrstate = subsystem_reshape(state, system)
-
-    if isinstance(traced_sites, int):
-        ptrstate = np.trace(ptrstate, axis1=traced_sites, axis2=traced_sites+subsystem_num)
-        new_dim = np.prod([s for i_s, s in enumerate(system) if i_s != traced_sites])
+    if keep_sites:
+        if isinstance(traced_sites, (int, np.integer)):
+            new_traced_out = list(range(len(system)))
+            del new_traced_out[traced_sites]
+            new_traced_out = tuple(new_traced_out)
+        else:
+            new_traced_out = tuple([i for i in range(len(system)) if i not in traced_sites])
+        return partial_trace(state, system, new_traced_out, keep_sites=False)
     else:
-        for tr_site in sorted(traced_sites, reverse=True):
-            ptrstate = np.trace(ptrstate, axis1=tr_site, axis2=tr_site+subsystem_num)
-            subsystem_num -= 1
-    
-        new_dim = np.prod([s for i_s, s in enumerate(system) if i_s not in traced_sites])
-    return ptrstate.reshape((new_dim, new_dim))
+        # Other approach could be to apply a permutation and then trace by bipartition
+        subsystem_num = len(system)
+        ptrstate = subsystem_reshape(state, system)
+
+        if isinstance(traced_sites, (int, np.integer)):
+            ptrstate = np.trace(ptrstate, axis1=traced_sites, axis2=traced_sites+subsystem_num)
+            new_dim = np.prod([s for i_s, s in enumerate(system) if i_s != traced_sites])
+        else:
+            for tr_site in sorted(traced_sites, reverse=True):
+                ptrstate = np.trace(ptrstate, axis1=tr_site, axis2=tr_site+subsystem_num)
+                subsystem_num -= 1
+        
+            new_dim = np.prod([s for i_s, s in enumerate(system) if i_s not in traced_sites])
+        return ptrstate.reshape((new_dim, new_dim))
 
 
 def local_channel(state: np.ndarray, system: tuple[int], active_sites: tuple[int] | int, channel: np.ndarray) -> np.ndarray:
     """
-    Applies the channel to the satate in the chosen sites.
+    Applies the channel to the state in the chosen sites.
 
     Parameters
     ----------
     state : np.ndarray
         Density matrix of the state.
     system : tuple[int]
-        The system structure represented by a tupe with the local
+        The system structure represented by a tuple with the local
         dimension of the constituent subsystems.
     active_sites : tuple[int] | int
         The sites in which the channel acts on. If the channel's input and output dimensions
-        are equal, the order of the sites is used to arrange the sites before applaying the channel
+        are equal, the order of the sites is used to arrange the sites before applying the channel
         and recover them back. If the channel's output dimension differs from the input active_sites collapse
-        to a single site in the relative position correspoinding to active_sites[0].
+        to a single site in the relative position corresponding to active_sites[0].
     channel : np.ndarray
         The transition matrix of the quantum channel.
 
     Returns
     -------
     np.ndarray
-        Density matrix of the state resulting from applyting the channel.
+        Density matrix of the state resulting from applying the channel.
     """
     
     is_square_channel = channel.shape[0] == channel.shape[1]

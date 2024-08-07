@@ -136,6 +136,10 @@ class TestStateTransformations(unittest.TestCase):
         rho_ptr = partial_trace(rho, (dim,)*n, (0, 2))
         np.testing.assert_array_almost_equal(rho_ptr, rho_arr[1])
 
+        # With keep_sites instead
+        rho_ptr = partial_trace(rho, (dim,)*n, 1, keep_sites=True)
+        np.testing.assert_array_almost_equal(rho_ptr, rho_arr[1])
+
         # 2 out of 3 in disjoint positions and unormalized
         dim = 2
         n = 3
@@ -164,11 +168,19 @@ class TestStateTransformations(unittest.TestCase):
         rho_ptr = partial_trace(rho, (dim,)*n, (0, 1))
         np.testing.assert_array_almost_equal(rho_ptr, rho_arr[2])
 
+        # With keep_sites instead
+        rho_ptr = partial_trace(rho, (dim,)*n, 2, keep_sites=True)
+        np.testing.assert_array_almost_equal(rho_ptr, rho_arr[2])
+
         # A maximally entangled state
         dim = 2
         vrho = np.identity(dim).reshape(dim**2)
         rho = np.outer(vrho, vrho) / dim
         rho_ptr = partial_trace(rho, (dim,dim), 1)
+        np.testing.assert_array_almost_equal(rho_ptr, np.identity(dim)/dim)
+
+        # With keep_sites instead
+        rho_ptr = partial_trace(rho, (dim, dim), 1, keep_sites=True)
         np.testing.assert_array_almost_equal(rho_ptr, np.identity(dim)/dim)
 
 
