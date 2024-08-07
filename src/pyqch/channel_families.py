@@ -11,6 +11,82 @@ POVMs, probabilistic damping, and probabilistic unitaries.
 
 import numpy as np
 
+def amplitude_damping(dim: int, lamb: float, x: np.ndarray | int = 1, y: np.ndarray | int = 0) -> np.ndarray:
+    """
+    Amplitude damping in arbitrary dimension.
+
+    It describes the coherent damping from state |x> to |y>.
+    
+    Reduces to the usual qubit amplitude damping for dim=0, x=1, y=0.
+
+    Parameters
+    ----------
+    dim : int
+        The dimension of the Hilbert space.
+    lamb : float
+        The damping parameter ranging from 0 to 1.
+    x : np.ndarray | int, optional
+        The origin state for the damping, by default 1. If int, it is interpreted as a basis state.
+    y : np.ndarray | int, optional
+        The target state for the damping, by default 0. If int, it is interpreted as a basis state.
+
+    Returns
+    -------
+    np.ndarray
+        The transition matrix representing the amplitude damping channel.
+
+    Notes
+    -----
+    For the general d-dimensional formulation we considered Definition 1 in [3]_.
+
+    References
+    ----------
+    .. [3] Frederik vom Ende, (2024) "A Sufficient Criterion for Divisibility of Quantum Channels". arXiv: 2407.17103
+
+    Raises
+    ------
+    ValueError
+        If lambda not in [0, 1]; x or y are int and are not in [0, dim), or are np.ndarray and shape not compatible with (dim,1).
+    """
+    # Assert argument integrity
+    if not (0<= lamb <= 1):
+        raise ValueError(f"Invalid value for argument lamb, {lamb} does not satisfy 0 <= lamb <= 1.")
+    if isinstance(x, (int, np.integer)):
+        if not (0<= x < dim):
+            raise ValueError(f"Invalid value for argument x, {x} does not satisfy 0 <= x <= dim={dim}.")
+    else:
+        if not (x.shape == (dim, 1) or x.shape == (dim,)):
+            raise ValueError(f"Invalid shape for array x, {x.shape} not compatible with ({dim},).")
+    if isinstance(y, (int, np.integer)):
+        if not (0<= y < dim):
+            raise ValueError(f"Invalid value for argument y, {y} does not satisfy 0 <= y <= dim={dim}.")
+    else:
+        if not (y.shape == (dim, 1) or y.shape == (dim,)):
+            raise ValueError(f"Invalid shape for array y, {y.shape} not compatible with ({dim},).")
+
+    # Define the Kraus operators
+    Klamb = np.identity(dim, dtype=complex)
+    Llamb = np.zeros((dim, dim), dtype=complex)
+
+    if isinstance(x, (int, np.integer)):
+        Klamb[x, x] = np.sqrt(1-lamb)
+        if isinstance(y, (int, np.integer)):
+            Llamb[y, x] = np.sqrt(lamb)
+        else:
+            Llamb[:, x] = np.sqrt(lamb) * y
+   
+    else:
+        Klamb -= (1 - np.sqrt(1-lamb)) * np.outer(x, x.conj())
+        if isinstance(y, (int, np.integer)):
+            Llamb[y, :] = np.sqrt(lamb) * x.conj()
+        else:
+            Llamb = np.sqrt(lamb) * np.outer(y, x.conj())
+
+    # Construct the transfer matrix
+    mat = np.kron(Klamb, Klamb.conj()) + np.kron(Llamb, Llamb.conj())
+
+    return mat
+
 
 def classical_permutation(dim: int, perm: list) -> np.ndarray:
     """

@@ -174,3 +174,68 @@ class TestChannelFamilies(unittest.TestCase):
         rho_out = (trans @ rho_in.reshape((dim**2))).reshape((dim, dim))
         np.testing.assert_array_almost_equal(rho_out, rho_in.T)
 
+    def test_amplitude_damping_shape_ischannel(self):
+        from src.pyqch.channel_families import amplitude_damping
+        from src.pyqch import predicates
+        
+        rng = np.random.default_rng(123)
+
+        # Shape and is channel
+        dim = 5
+        lamb = .3
+
+        for xtype in ['int', 'array']:
+            if xtype == 'int':
+                x = rng.integers(0, dim)
+            else:
+                x = rng.random(dim)
+                x /= np.linalg.norm(x)
+            for ytype in ['int', 'array']:
+                if ytype == 'int':
+                    y = rng.integers(0, dim)
+                else:
+                    y = rng.random(dim)
+                    y /= np.linalg.norm(y)
+                
+                tad = amplitude_damping(dim, lamb=lamb, x=x, y=y)
+
+                self.assertEqual(tad.shape, (dim**2, dim**2))
+
+                self.assertTrue(predicates.is_channel(tad))
+
+    def test_amplitude_damping_qubit(self):
+        from src.pyqch.channel_families import amplitude_damping
+        
+        # Expected behavior for single qubit
+        lamb = .3
+        tad_qubit = amplitude_damping(2, lamb, x=1, y=0)
+        
+        Kl = np.diag([1, np.sqrt(1-lamb)])
+        Ll = np.array([[0, np.sqrt(lamb)],
+                       [0, 0]])
+
+        tad_qubit_ref = (np.kron(Kl, Kl)
+                         + np.kron(Ll, Ll))
+        
+        np.testing.assert_array_almost_equal(tad_qubit, tad_qubit_ref)
+
+    def test_amplitude_damping_computational(self):
+        from src.pyqch.channel_families import amplitude_damping
+                
+        # Different input formats agree for states in computational basis
+        dim = 5
+        lamb = .3
+        
+        xint = 1
+        xarr = np.zeros(dim)
+        xarr[xint] = 1
+
+        yint = 0
+        yarr = np.zeros(dim)
+        yarr[yint] = 1
+
+        tad_comp = amplitude_damping(dim, lamb, x=xint, y=yint)
+
+        tad_comp2 = amplitude_damping(dim, lamb, x=xarr, y=yarr)
+        
+        np.testing.assert_array_almost_equal(tad_comp, tad_comp2)
