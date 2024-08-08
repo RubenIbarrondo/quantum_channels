@@ -213,6 +213,25 @@ class TestChannelOperations(unittest.TestCase):
         self.assertEqual(tensor_3.dtype, (tdepol[0,0]*tdephas[0,0]*tu[0,0]).dtype)
 
 
+    def test_kraus_operators(self):
+        import pyqch.random_generators as rg
+        import pyqch.channel_families as cf
+        
+        from pyqch.channel_operations import kraus_operators
+        seed = 468
+        dim_max = 7
+        pdepol = .5
+
+        for dim in range(2, dim_max):
+            rstate = rg.state(dim, rank=1, random_state=seed)
+            t = cf.depolarizing(dim, p = pdepol, r=rstate)
+
+            kraus_ops = kraus_operators(t)
+
+            t_from_kraus =  np.einsum('sji,spq->jpiq', kraus_ops, kraus_ops.conj()).reshape((dim**2, dim**2))
+
+            np.testing.assert_array_almost_equal(t, t_from_kraus)          
+
 
 class TestChannelOperations_DoeblinCoefficient(unittest.TestCase):
 
