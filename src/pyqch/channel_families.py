@@ -2,16 +2,18 @@
 channel_families
 ================
 
-This module implements functions that return the transition matrices 
-describing different families of quantum channels. These functions 
-cover a variety of quantum operations including classical permutations, 
+This module implements functions that return the transition matrices or
+Kraus representation describing different families of quantum channels.
+
+These functions cover a variety of channels including classical permutations, 
 dephasing, depolarizing, embedding classical channels, initializers, 
 POVMs, probabilistic damping, and probabilistic unitaries.
 """
 
 import numpy as np
+import pyqch.channel_operations as co
 
-def amplitude_damping(dim: int, lamb: float, x: np.ndarray | int = 1, y: np.ndarray | int = 0) -> np.ndarray:
+def amplitude_damping(dim: int, lamb: float, x: np.ndarray | int = 1, y: np.ndarray | int = 0, kraus_representation: bool = False) -> np.ndarray:
     """
     Amplitude damping in arbitrary dimension.
 
@@ -84,11 +86,14 @@ def amplitude_damping(dim: int, lamb: float, x: np.ndarray | int = 1, y: np.ndar
 
     # Construct the transfer matrix
     mat = np.kron(Klamb, Klamb.conj()) + np.kron(Llamb, Llamb.conj())
+    
+    if kraus_representation:
+        return co.kraus_operators(mat)
+    else:
+        return mat
 
-    return mat
 
-
-def classical_permutation(dim: int, perm: list) -> np.ndarray:
+def classical_permutation(dim: int, perm: list, kraus_representation: bool = False) -> np.ndarray:
     """
     Returns the transition matrix representing a classical permutation 
     channel.
@@ -117,10 +122,13 @@ def classical_permutation(dim: int, perm: list) -> np.ndarray:
     """
     mat = np.zeros((dim, dim))
     mat[perm, np.arange(dim)] = 1
-    return mat
+    if kraus_representation:
+        return co.kraus_operators(mat)
+    else:
+        return mat
 
 
-def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None) -> np.ndarray:
+def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None, kraus_representation: bool = False) -> np.ndarray:
     """
     Returns the transition matrix for a dephasing channel.
 
@@ -169,6 +177,9 @@ def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None) -> np.ndarr
        [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0.5, 0. ],
        [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 1. ]])
     """
+    if kraus_representation:
+        return co.kraus_operators(dephasing(dim, g, u, kraus_representation=False))
+    
     a = np.identity(dim)
 
     if np.isscalar(g):
@@ -188,7 +199,7 @@ def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None) -> np.ndarr
             return np.einsum('rp,ri,sq,sj,rs->pqij', u.conj(), u, u, u.conj(), g).reshape((dim**2, dim**2))
     
 
-def depolarizing(dim: int, p: float, r: np.ndarray = None) -> np.ndarray:
+def depolarizing(dim: int, p: float, r: np.ndarray = None, kraus_representation: bool = False) -> np.ndarray:
     """
     Returns the transition matrix for a depolarizing channel.
 
@@ -233,10 +244,14 @@ def depolarizing(dim: int, p: float, r: np.ndarray = None) -> np.ndarray:
     else:
         transfer_matrix = (1-p) * np.identity(dim**2, dtype=complex)
         transfer_matrix += p * np.outer(vr, max_entang)
-    return transfer_matrix    
+    
+    if kraus_representation:
+        return co.kraus_operators(transfer_matrix)
+    else:
+        return transfer_matrix    
 
 
-def embed_classical(dim: int, stoch_mat: np.ndarray) -> np.ndarray:
+def embed_classical(dim: int, stoch_mat: np.ndarray, kraus_representation: bool = False) -> np.ndarray:
     """
     Embeds a classical stochastic matrix into a quantum transition matrix.
 
@@ -246,7 +261,7 @@ def embed_classical(dim: int, stoch_mat: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     dim : int
-        The dimension of the Hilbert space.
+        The dimension of the input Hilbert space.
     stoch_mat : np.ndarray
         The classical column-stochastic matrix to be embedded.
 
@@ -266,11 +281,17 @@ def embed_classical(dim: int, stoch_mat: np.ndarray) -> np.ndarray:
      [0.  0.  0.  0. ]
      [0.2 0.  0.  0.7]]
     """
-    a = np.identity(dim)
-    return (np.einsum("ij,pq,pi->pqij", a, a, stoch_mat)).reshape((dim**2, dim**2))
+    if kraus_representation:
+        return co.kraus_operators(embed_classical(dim, stoch_mat, kraus_representation=False))
+    
+    dim_in = dim
+    dim_out = stoch_mat.shape[0]
+    a_in = np.identity(dim_in)
+    a_out = np.identity(dim_out)
+    return (np.einsum("ij,pq,pi->pqij", a_in, a_out, stoch_mat)).reshape((dim_out**2, dim_in**2))
 
 
-def initializer(dim: int, states: np.ndarray, mode='c-q') -> np.ndarray:
+def initializer(dim: int, states: np.ndarray, mode='c-q', kraus_representation: bool = False) -> np.ndarray:
     """
     Returns a transition matrix for initializing a quantum state.
 
@@ -286,7 +307,7 @@ def initializer(dim: int, states: np.ndarray, mode='c-q') -> np.ndarray:
     Parameters
     ----------
     dim : int
-        The dimension of the Hilbert space.
+        The dimension of the output Hilbert space.
     states : np.ndarray
         Array of states defining the choices for initialization.
         The expected shape is either (number of states, dim, dim) or
@@ -316,6 +337,8 @@ def initializer(dim: int, states: np.ndarray, mode='c-q') -> np.ndarray:
      [0.  0.5]
      [0.  0.5]]
     """
+    if kraus_representation:
+        return co.kraus_operators(initializer(dim, states, mode, kraus_representation=False))
     if len(states.shape) == 2:
         states_as_dm = np.array([np.outer(s, s.conj()) for s in states])
         return initializer(dim=dim, states=states_as_dm, mode=mode)
@@ -336,10 +359,12 @@ def initializer(dim: int, states: np.ndarray, mode='c-q') -> np.ndarray:
         elif mode == 'c-q':
             mat = np.einsum('kpq->pqk', states)
             mat = mat.reshape((dim**2, m))
-    return mat
+        else:
+            raise ValueError(f'Invalid mode {mode}.')
+        return mat
 
 
-def povm(dim: int, pos: np.ndarray, mode='q-q') -> np.ndarray:
+def povm(dim: int, pos: np.ndarray, mode='q-q', kraus_representation: bool = False) -> np.ndarray:
     """
     Returns a transition matrix for a quantum channel defined by a
     positive operator-valued measure (POVM).
@@ -373,6 +398,8 @@ def povm(dim: int, pos: np.ndarray, mode='q-q') -> np.ndarray:
      [0 0 0 0]
      [0 0 0 1]]
     """
+    if kraus_representation:
+        return co.kraus_operators(dim, pos, mode, kraus_representation=False)
     # Verify inputs
     # Cast pos to np array with proper shape
 
@@ -389,10 +416,12 @@ def povm(dim: int, pos: np.ndarray, mode='q-q') -> np.ndarray:
     elif mode == 'q-qc':
         mat = np.einsum('mi,mjk,ml,mno->ijlnko', a,pos, a, pos.conj())
         mat = mat.reshape(((m*dim)**2, dim**2))
+    else:
+        raise ValueError(f'Invalid mode {mode}.')
     return mat
 
 
-def probabilistic_damping(dim: int, p: float) -> np.ndarray:
+def probabilistic_damping(dim: int, p: float, kraus_representation: bool = False) -> np.ndarray:
     """
     Returns a transition matrix for a probabilistic damping channel.
 
@@ -420,6 +449,8 @@ def probabilistic_damping(dim: int, p: float) -> np.ndarray:
      [0.  0.  0.9 0. ]
      [0.  0.  0.  0.9]]
     """
+    if kraus_representation:
+        return co.kraus_operators(probabilistic_damping(dim, p, kraus_representation=False))
     proy = np.zeros((dim**2, dim**2))
     proy[0,0] = 1
     
@@ -431,7 +462,7 @@ def probabilistic_damping(dim: int, p: float) -> np.ndarray:
     return (1-p) * np.identity(dim**2) + p * (proy+damp)
 
 
-def probabilistic_unitaries(dim:int, p_arr:np.ndarray, u_arr:np.ndarray) -> np.ndarray:
+def probabilistic_unitaries(dim:int, p_arr:np.ndarray, u_arr:np.ndarray, kraus_representation: bool = False) -> np.ndarray:
     """
     Returns a transition matrix for a channel that applies unitaries 
     probabilistically.
@@ -466,10 +497,12 @@ def probabilistic_unitaries(dim:int, p_arr:np.ndarray, u_arr:np.ndarray) -> np.n
      [0.  0.5 0.5 0. ]
      [0.5 0.  0.  0.5]]
     """
+    if kraus_representation:
+        return co.kraus_operators(probabilistic_unitaries(dim, p_arr, u_arr, kraus_representation=False))
     return (np.einsum("m,mpi,mqj->pqij", p_arr, u_arr, u_arr.conj())).reshape((dim**2, dim**2))
 
 
-def transposition(dim: int, u: np.ndarray = None) -> np.ndarray:
+def transposition(dim: int, u: np.ndarray = None, kraus_representation: bool = False) -> np.ndarray:
     """
     Returns a transition matrix for the transposition operator. This is positive but
     not completely positive, thus it is not a quantum channel.
@@ -487,7 +520,8 @@ def transposition(dim: int, u: np.ndarray = None) -> np.ndarray:
     np.ndarray
         The transition matrix for the transposition.
     """
-
+    if kraus_representation:
+        raise ValueError('This map does not admit the usual Kraus representation.')
     tmat = np.identity(dim**2).reshape((dim,)*4)
     tmat = np.einsum("ijkl->jikl", tmat).reshape((dim**2, dim**2))
     

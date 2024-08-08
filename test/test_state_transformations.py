@@ -4,7 +4,7 @@ import numpy as np
 class TestStateTransformations(unittest.TestCase):
 
     def test_subsystem_reshape(self):
-        from src.pyqch.state_transformations import subsystem_reshape
+        from pyqch.state_transformations import subsystem_reshape
         # (dim**n, dim**n) to (dim,)*n
         dim = 2
         n = 3
@@ -27,7 +27,7 @@ class TestStateTransformations(unittest.TestCase):
             rstate = subsystem_reshape(state, (dim,)*(n+1))
 
     def test_subsystem_permutation(self):
-        from src.pyqch.state_transformations import subsystem_permutation
+        from pyqch.state_transformations import subsystem_permutation
         
         # Identity
         rho1 = np.array([[1,0],[0,0]])
@@ -86,7 +86,7 @@ class TestStateTransformations(unittest.TestCase):
         np.testing.assert_array_almost_equal(rho_swap, np.kron(np.kron(rho1, rho3), rho2))
     
     def test_subsystem_permutation_201(self):
-        from src.pyqch.state_transformations import subsystem_permutation
+        from pyqch.state_transformations import subsystem_permutation
         n = 3
         dim = 2
         perm = (2, 0, 1)
@@ -112,7 +112,7 @@ class TestStateTransformations(unittest.TestCase):
         np.testing.assert_array_almost_equal(rho_perm, rho_perm_ref)
 
     def test_partial_trace(self):
-        from src.pyqch.state_transformations import partial_trace
+        from pyqch.state_transformations import partial_trace
 
         # Two sites
         rho1 = np.array([[1,0],[0,0]])
@@ -184,9 +184,9 @@ class TestStateTransformations(unittest.TestCase):
         np.testing.assert_array_almost_equal(rho_ptr, np.identity(dim)/dim)
 
 
-from src.pyqch.state_transformations import local_channel
-import src.pyqch.channel_families as cf
-import src.pyqch.channel_operations as co
+from pyqch.state_transformations import local_channel
+import pyqch.channel_families as cf
+import pyqch.channel_operations as co
 
 class TestStateTransformations_local_channel(unittest.TestCase):
        
