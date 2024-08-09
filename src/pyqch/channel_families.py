@@ -31,7 +31,10 @@ def amplitude_damping(dim: int, lamb: float, x: np.ndarray | int = 1, y: np.ndar
         The origin state for the damping, by default 1. If int, it is interpreted as a basis state.
     y : np.ndarray | int, optional
         The target state for the damping, by default 0. If int, it is interpreted as a basis state.
-
+    kraus_representation : bool, optional
+        If true, the function returns the Kraus representation of the channel with shape 
+        (Kraus operator index, dim2, dim1), defaults to False.
+        
     Returns
     -------
     np.ndarray
@@ -83,13 +86,12 @@ def amplitude_damping(dim: int, lamb: float, x: np.ndarray | int = 1, y: np.ndar
             Llamb[y, :] = np.sqrt(lamb) * x.conj()
         else:
             Llamb = np.sqrt(lamb) * np.outer(y, x.conj())
-
-    # Construct the transfer matrix
-    mat = np.kron(Klamb, Klamb.conj()) + np.kron(Llamb, Llamb.conj())
     
     if kraus_representation:
-        return co.kraus_operators(mat)
+        return np.array([Klamb, Llamb])
     else:
+        # Construct the transfer matrix
+        mat = np.kron(Klamb, Klamb.conj()) + np.kron(Llamb, Llamb.conj())
         return mat
 
 
@@ -104,7 +106,10 @@ def classical_permutation(dim: int, perm: list, kraus_representation: bool = Fal
         The dimension of the Hilbert space.
     perm : list
         The array defining the permutation that maps i to perm[i].
-
+    kraus_representation : bool, optional
+        Defaults to False. WARNING: This map does not admit a Kraus representation, if it
+        is set to True it will rise a ValueError.
+    
     Returns
     -------
     np.ndarray
@@ -144,7 +149,10 @@ def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None, kraus_repre
     u : np.ndarray, optional
         The unitary matrix defining the basis in which dephasing occurs.
         Defaults to the identity matrix.
-
+    kraus_representation : bool, optional
+        If true, the function returns the Kraus representation of the channel with shape 
+        (Kraus operator index, dim2, dim1), defaults to False.
+    
     Returns
     -------
     np.ndarray
@@ -164,42 +172,75 @@ def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None, kraus_repre
     --------
     >>> from channel_families import dephasing
     >>> dim = 3
-    >>> g = 0.5
+    >>> g = 0.4
     >>> T = dephasing(dim, g)
     >>> print(T)
     [[1. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
-       [0. , 0.5, 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
-       [0. , 0. , 0.5, 0. , 0. , 0. , 0. , 0. , 0. ],
-       [0. , 0. , 0. , 0.5, 0. , 0. , 0. , 0. , 0. ],
+       [0. , 0.6, 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
+       [0. , 0. , 0.6, 0. , 0. , 0. , 0. , 0. , 0. ],
+       [0. , 0. , 0. , 0.6, 0. , 0. , 0. , 0. , 0. ],
        [0. , 0. , 0. , 0. , 1. , 0. , 0. , 0. , 0. ],
-       [0. , 0. , 0. , 0. , 0. , 0.5, 0. , 0. , 0. ],
-       [0. , 0. , 0. , 0. , 0. , 0. , 0.5, 0. , 0. ],
-       [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0.5, 0. ],
+       [0. , 0. , 0. , 0. , 0. , 0.6, 0. , 0. , 0. ],
+       [0. , 0. , 0. , 0. , 0. , 0. , 0.6, 0. , 0. ],
+       [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0.6, 0. ],
        [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 1. ]])
     """
     if kraus_representation:
-        return co.kraus_operators(dephasing(dim, g, u, kraus_representation=False))
-    
-    a = np.identity(dim)
+        if u is not None:
+            kraus_ops_id = dephasing(dim, g, u = None, kraus_representation=True)
+            kraus_ops = np.einsum('ji,ljp,pq->liq', u.conj(), kraus_ops_id, u)
+            return kraus_ops
+        else:
+            if np.isscalar(g):
+                if not (0 <= g <= 1):
+                    raise ValueError('This map does not admit the usual Kraus representation with g = {g}.')
+                # This form is simple and intuitive
+                # although not optimal in Kraus rank
+                # (at least rank d can be obtained)
+                kraus_ops = np.zeros((dim+1, dim, dim))
+                kraus_ops[0] = np.diag(np.full(dim, np.sqrt(1 - g)))
 
-    if np.isscalar(g):
+                for k in range(dim):
+                    kraus_ops[k+1, k, k] = np.sqrt(g)
                 
-        if u is None:
-            tdeph = np.einsum("pq,pi,qj->pqij", a, a, a)
-            tid = np.einsum("pi,qj->pqij", a, a)
-            return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
-        else:
-            tdeph = np.einsum("sp,si,sq,sj->pqij", u.conj(), u, u, u.conj())
-            tid = np.einsum("pi,qj->pqij", a, a)
-            return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
-    else: 
-        if u is None:
-            return np.einsum('pi,qj,ij->pqij', a, a, g).reshape((dim**2, dim**2))
-        else:
-            return np.einsum('rp,ri,sq,sj,rs->pqij', u.conj(), u, u, u.conj(), g).reshape((dim**2, dim**2))
+                return kraus_ops
+
+            else:
+                # Diagonalize g and check whether it is positive
+                eigs, eigvecs = np.linalg.eigh(g)
+
+                # For the Kraus form to be equivalent to the transition matrix
+                # g has to be positive. This is not required for the transition matrix.
+                if not np.all(0 <= eigs):
+                    raise ValueError('This map does not admit the usual Kraus representation with g = {g}.')
+
+                kraus_ops = np.zeros((dim, dim, dim))
+
+                for k in range(dim):
+                    kraus_ops[k] = np.diag(np.sqrt(eigs[k]) * eigvecs[:, k])
+                return kraus_ops
+    
+    else:
+        a = np.identity(dim)
+
+        if np.isscalar(g):
+            
+            if u is None:
+                tdeph = np.einsum("pq,pi,qj->pqij", a, a, a)
+                tid = np.einsum("pi,qj->pqij", a, a)
+                return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
+            else:
+                tdeph = np.einsum("sp,si,sq,sj->pqij", u.conj(), u, u, u.conj())
+                tid = np.einsum("pi,qj->pqij", a, a)
+                return ((1-g) * tid + g * tdeph).reshape((dim**2, dim**2))
+        else: 
+            if u is None:
+                return np.einsum('pi,qj,ij->pqij', a, a, g).reshape((dim**2, dim**2))
+            else:
+                return np.einsum('rp,ri,sq,sj,rs->pqij', u.conj(), u, u, u.conj(), g).reshape((dim**2, dim**2))
     
 
-def depolarizing(dim: int, p: float, r: np.ndarray = None, kraus_representation: bool = False) -> np.ndarray:
+def depolarizing(dim: int, p: float, r: np.ndarray = None, kraus_representation: bool = False, kraus_atol: float = 1e-7) -> np.ndarray:
     """
     Returns the transition matrix for a depolarizing channel.
 
@@ -212,7 +253,12 @@ def depolarizing(dim: int, p: float, r: np.ndarray = None, kraus_representation:
     r : np.ndarray, optional
         The stationary state of the depolarizing channel. Defaults to the 
         completely mixed state.
-
+    kraus_representation : bool, optional
+        If true, the function returns the Kraus representation of the channel with shape 
+        (Kraus operator index, dim2, dim1), defaults to False.
+    kraus_atol : float, optional
+        The tolerance to neglect a Kraus operator, defaults to 1e-7.
+    
     Returns
     -------
     np.ndarray
@@ -234,24 +280,48 @@ def depolarizing(dim: int, p: float, r: np.ndarray = None, kraus_representation:
     if r is None:
         r = np.identity(dim) / dim
     
-    max_entang = np.reshape(np.identity(dim), dim**2)
-    vr = np.reshape(r, dim**2)
+    if not kraus_representation:
+        max_entang = np.reshape(np.identity(dim), dim**2)
+        vr = np.reshape(r, dim**2)
 
-    if p == 1:
-        transfer_matrix = np.outer(vr, max_entang)
-    elif p == 0:
-        transfer_matrix = np.identity(dim ** 2)
+        if p == 1:
+            transfer_matrix = np.outer(vr, max_entang)
+        elif p == 0:
+            transfer_matrix = np.identity(dim ** 2)
+        else:
+            transfer_matrix = (1-p) * np.identity(dim**2, dtype=complex)
+            transfer_matrix += p * np.outer(vr, max_entang)
+        return transfer_matrix
     else:
-        transfer_matrix = (1-p) * np.identity(dim**2, dtype=complex)
-        transfer_matrix += p * np.outer(vr, max_entang)
-    
-    if kraus_representation:
-        return co.kraus_operators(transfer_matrix)
-    else:
-        return transfer_matrix    
+        # Diagonalize r or use it if it is already diagonal
+        if np.allclose(np.diag(np.diag(r)), r):
+            w = np.diag(r)
+            v = np.identity(dim)
+        else:
+            w, v = np.linalg.eigh(r)
 
+        # Get the effective rank of r and the mask
+        # for those eigenvalues
+        mask = (w > kraus_atol)
+        rank = np.count_nonzero(mask)
 
-def embed_classical(dim: int, stoch_mat: np.ndarray, kraus_representation: bool = False) -> np.ndarray:
+        # Ensure normalization
+        w = w / np.sum(w[mask])
+
+        # Define the Kraus operators
+        # (This may not be optimal in Kraus rank)
+        kraus_ops = np.zeros((dim * rank + 1, dim, dim))
+        kraus_ops[0] = np.sqrt(1-p) * np.identity(dim)
+
+        kl_count = 1
+        for k in np.where(mask)[0]:
+            for l in range(dim):
+                kraus_ops[kl_count, :, l] = np.sqrt(p * w[k]) * v[:, k]
+                kl_count += 1
+        return kraus_ops
+        
+
+def embed_classical(dim: int, stoch_mat: np.ndarray, kraus_representation: bool = False,  kraus_atol: float = 1e-7) -> np.ndarray:
     """
     Embeds a classical stochastic matrix into a quantum transition matrix.
 
@@ -264,6 +334,11 @@ def embed_classical(dim: int, stoch_mat: np.ndarray, kraus_representation: bool 
         The dimension of the input Hilbert space.
     stoch_mat : np.ndarray
         The classical column-stochastic matrix to be embedded.
+    kraus_representation : bool, optional
+        If true, the function returns the Kraus representation of the channel with shape 
+        (Kraus operator index, dim2, dim1), defaults to False.
+    kraus_atol : float, optional
+        The tolerance to neglect a Kraus operator, defaults to 1e-7.
 
     Returns
     -------
@@ -281,17 +356,29 @@ def embed_classical(dim: int, stoch_mat: np.ndarray, kraus_representation: bool 
      [0.  0.  0.  0. ]
      [0.2 0.  0.  0.7]]
     """
-    if kraus_representation:
-        return co.kraus_operators(embed_classical(dim, stoch_mat, kraus_representation=False))
     
     dim_in = dim
     dim_out = stoch_mat.shape[0]
-    a_in = np.identity(dim_in)
-    a_out = np.identity(dim_out)
-    return (np.einsum("ij,pq,pi->pqij", a_in, a_out, stoch_mat)).reshape((dim_out**2, dim_in**2))
+
+    if kraus_representation:
+        krank = np.count_nonzero(stoch_mat >  kraus_atol)
+
+        kraus_ops = np.zeros((krank, dim_out, dim_in))
+        kl_count = 0
+        for k in range(dim_out):
+            for l in range(dim_in):
+                if stoch_mat[k, l] > kraus_atol:
+                    kraus_ops[kl_count, k, l] = np.sqrt(stoch_mat[k, l])
+                    kl_count += 1
+                
+        return kraus_ops
+    else:
+        a_in = np.identity(dim_in)
+        a_out = np.identity(dim_out)
+        return (np.einsum("ij,pq,pi->pqij", a_in, a_out, stoch_mat)).reshape((dim_out**2, dim_in**2))
 
 
-def initializer(dim: int, states: np.ndarray, mode='c-q', kraus_representation: bool = False) -> np.ndarray:
+def initializer(dim: int, states: np.ndarray, mode='c-q', kraus_representation: bool = False, kraus_atol: float = 1e-7) -> np.ndarray:
     """
     Returns a transition matrix for initializing a quantum state.
 
@@ -319,7 +406,13 @@ def initializer(dim: int, states: np.ndarray, mode='c-q', kraus_representation: 
         'c-qc' for classical to quantum and classical, 'q-q' for 
         quantum to quantum, 'q-qc' for quantum to quantum and
         classical). Defaults to 'c-q'.
-
+    kraus_representation : bool, optional
+        If true, the function returns the Kraus representation of the channel with shape 
+        (Kraus operator index, dim2, dim1), defaults to False.
+        Some modes do not admit a Kraus representation.
+    kraus_atol : float, optional
+        The tolerance to neglect a Kraus operator, defaults to 1e-7.
+    
     Returns
     -------
     np.ndarray
@@ -337,16 +430,52 @@ def initializer(dim: int, states: np.ndarray, mode='c-q', kraus_representation: 
      [0.  0.5]
      [0.  0.5]]
     """
+    m = states.shape[0]
+
     if kraus_representation:
         if mode.startswith('c'):
             raise ValueError(f'This map does not admit the usual Kraus representation with mode {mode}.')
+        
+        # Obtain the spectral decomposition of each state
+        if len(states.shape) == 2:
+            w = [np.ones(1)] * m
+            vecs = [state for state in states]
+        else:
+            w = []
+            vecs = []
+            for state in states:
+                eigvals, eigvecs = np.linalg.eigh(state) 
+
+                state_rank = np.count_nonzero(eigvals > kraus_atol)
+                w.append(eigvals[-state_rank:])
+                vecs.append(eigvecs[:,-state_rank:])
+        
+        krank = np.sum([len(eigvals) for eigvals in w])
+        
+        if mode == 'q-q':
+            kraus_ops = np.zeros((krank, dim, m))
+        else:
+            kraus_ops = np.zeros((krank, dim * m, m))
+
+        state_ind = 0
+        cum_ind = 0
+        for eigvals, eigvecs in zip(w, vecs):
+            state_rank = eigvals.shape[0]
+            
+            if mode == 'q-q':
+                kraus_ops[cum_ind:cum_ind+state_rank,:, state_ind] = (np.sqrt(eigvals) * eigvecs).T
+            else:
+                kraus_ops[cum_ind:cum_ind+state_rank,state_ind::m, state_ind] = (np.sqrt(eigvals) * eigvecs).T
+
+            state_ind += 1
+            cum_ind += state_rank
+
         return co.kraus_operators(initializer(dim, states, mode, kraus_representation=False))
     
     if len(states.shape) == 2:
         states_as_dm = np.array([np.outer(s, s.conj()) for s in states])
         return initializer(dim=dim, states=states_as_dm, mode=mode)
     else:
-        m = states.shape[0]
         a = np.identity(m)
 
         if mode == 'q-qc':
@@ -384,7 +513,11 @@ def povm(dim: int, pos: np.ndarray, mode='q-q', kraus_representation: bool = Fal
         Mode of the channel ('q-q' for quantum to quantum, 
         'q-c' for quantum to classical, 'q-qc' for quantum to
         quantum and classical). Defaults to 'q-q'.
-
+    kraus_representation : bool, optional
+        If true, the function returns the Kraus representation of the channel with shape 
+        (Kraus operator index, dim2, dim1), defaults to False.
+        Some modes do not admit a Kraus representation.
+    
     Returns
     -------
     np.ndarray
@@ -401,15 +534,21 @@ def povm(dim: int, pos: np.ndarray, mode='q-q', kraus_representation: bool = Fal
      [0 0 0 0]
      [0 0 0 1]]
     """
+    # Verify inputs ?
+    # Cast pos to np array with proper shape ?
+    m = pos.shape[0]
+
     if kraus_representation:
         if mode.endswith('-c'):
             raise ValueError(f'This map does not admit the usual Kraus representation with mode {mode}.')
-        return co.kraus_operators(povm(dim, pos, mode, kraus_representation=False))
-    # Verify inputs
-    # Cast pos to np array with proper shape
-
-    # mode is either 'q-q', 'q-c', or 'q-qc'
-    m = pos.shape[0]
+        elif mode == 'q-q':
+            return pos
+        else:
+            kraus_ops = np.zeros((m, dim * m, dim))
+            for k, po in enumerate(pos):
+                kraus_ops[k,k::m,:] = po
+            return kraus_ops
+        
     a = np.identity(m)
 
     if mode == 'q-q':
@@ -436,7 +575,10 @@ def probabilistic_damping(dim: int, p: float, kraus_representation: bool = False
         The dimension of the Hilbert space.
     p : float
         Damping probability.
-
+    kraus_representation : bool, optional
+        If true, the function returns the Kraus representation of the channel with shape 
+        (Kraus operator index, dim2, dim1), defaults to False.
+    
     Returns
     -------
     np.ndarray
@@ -455,8 +597,26 @@ def probabilistic_damping(dim: int, p: float, kraus_representation: bool = False
      [0.  0.  0.  0.9]]
     """
     if kraus_representation:
-        return co.kraus_operators(probabilistic_damping(dim, p, kraus_representation=False))
-    proy = np.zeros((dim**2, dim**2))
+        if p == 0.0:
+            kraus_ops = np.zeros((1, dim, dim))
+            kraus_ops[0] = np.identity(dim)
+            return kraus_ops
+        
+        kraus_ops = np.zeros((dim+1, dim, dim))
+        
+        np.fill_diagonal(kraus_ops[0], np.sqrt(1-p))
+
+        kraus_ops[1,0,0] = np.sqrt(p)
+
+        for k in range(1, dim):
+            kraus_ops[k+1,k-1,k] = np.sqrt(p)
+
+        if p == 1.0:
+            return kraus_ops[1:]
+        else:
+            return kraus_ops
+        
+    proy = np.zeros((dim ** 2, dim ** 2))
     proy[0,0] = 1
     
     damp = np.zeros((dim, dim, dim, dim))
@@ -482,7 +642,10 @@ def probabilistic_unitaries(dim:int, p_arr:np.ndarray, u_arr:np.ndarray, kraus_r
         Array of unitary matrices. The expected shape is
         (number of unitaries, dim, dim), such that u_arr[i] is
         the ith possible unitary.
-
+    kraus_representation : bool, optional
+        If true, the function returns the Kraus representation of the channel with shape 
+        (Kraus operator index, dim2, dim1), defaults to False.
+    
     Returns
     -------
     np.ndarray
@@ -503,7 +666,7 @@ def probabilistic_unitaries(dim:int, p_arr:np.ndarray, u_arr:np.ndarray, kraus_r
      [0.5 0.  0.  0.5]]
     """
     if kraus_representation:
-        return co.kraus_operators(probabilistic_unitaries(dim, p_arr, u_arr, kraus_representation=False))
+        return np.einsum('p,pij->pij', np.sqrt(p_arr), u_arr)
     return (np.einsum("m,mpi,mqj->pqij", p_arr, u_arr, u_arr.conj())).reshape((dim**2, dim**2))
 
 
@@ -519,6 +682,9 @@ def transposition(dim: int, u: np.ndarray = None, kraus_representation: bool = F
     u : np.ndarray or None
         Basis in which the transposition is performed, if None the canonical basis is used.
         Defaults to None.
+    kraus_representation : bool, optional
+        Defaults to False. WARNING: This map does not admit a Kraus representation, if it
+        is set to True it will rise a ValueError.
     
     Returns
     -------
