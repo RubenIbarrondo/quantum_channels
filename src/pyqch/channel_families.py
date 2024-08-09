@@ -120,12 +120,12 @@ def classical_permutation(dim: int, perm: list, kraus_representation: bool = Fal
      [0. 0. 1.]
      [1. 0. 0.]]
     """
+    if kraus_representation:
+        raise ValueError('This map does not admit the usual Kraus representation.')
+    
     mat = np.zeros((dim, dim))
     mat[perm, np.arange(dim)] = 1
-    if kraus_representation:
-        return co.kraus_operators(mat)
-    else:
-        return mat
+    return mat
 
 
 def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None, kraus_representation: bool = False) -> np.ndarray:
@@ -338,7 +338,10 @@ def initializer(dim: int, states: np.ndarray, mode='c-q', kraus_representation: 
      [0.  0.5]]
     """
     if kraus_representation:
+        if mode.startswith('c'):
+            raise ValueError(f'This map does not admit the usual Kraus representation with mode {mode}.')
         return co.kraus_operators(initializer(dim, states, mode, kraus_representation=False))
+    
     if len(states.shape) == 2:
         states_as_dm = np.array([np.outer(s, s.conj()) for s in states])
         return initializer(dim=dim, states=states_as_dm, mode=mode)
@@ -399,7 +402,9 @@ def povm(dim: int, pos: np.ndarray, mode='q-q', kraus_representation: bool = Fal
      [0 0 0 1]]
     """
     if kraus_representation:
-        return co.kraus_operators(dim, pos, mode, kraus_representation=False)
+        if mode.endswith('-c'):
+            raise ValueError(f'This map does not admit the usual Kraus representation with mode {mode}.')
+        return co.kraus_operators(povm(dim, pos, mode, kraus_representation=False))
     # Verify inputs
     # Cast pos to np array with proper shape
 
@@ -411,8 +416,8 @@ def povm(dim: int, pos: np.ndarray, mode='q-q', kraus_representation: bool = Fal
         mat = np.einsum('kij,klm->iljm', pos, pos.conj())
         mat = mat.reshape((dim**2, dim**2))
     elif mode == 'q-c':
-        mat = np.einsum('ki,ksl,kj,kso->ijlo', a, pos, a.conj(), pos.conj())
-        mat = mat.reshape((m**2, dim**2))
+        mat = np.einsum('ksl,kj,kso->jlo', pos, a.conj(), pos.conj())
+        mat = mat.reshape((m, dim**2))
     elif mode == 'q-qc':
         mat = np.einsum('mi,mjk,ml,mno->ijlnko', a,pos, a, pos.conj())
         mat = mat.reshape(((m*dim)**2, dim**2))

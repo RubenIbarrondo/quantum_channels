@@ -135,19 +135,43 @@ class TestChannelFamilies_probabilistic_damping(TestChannelFamily):
 
 class TestChannelFamilies_povm(TestChannelFamily):
     def test_shape(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            dimin, dimout = self._dimin_dimout(*params)
+
+            self.assertEqual(tm.shape, (dimout, dimin))
 
     def test_is_channel(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
+        # Is channel only makes sense if mode ends with q or qc
+
+        from pyqch.predicates import is_channel
+
+        for params in self._arbitrary_argument_generator():
+            if not params[2].endswith('-c'):
+                tm = self._channel_function()(*params)
+                self.assertTrue(is_channel(tm))
     
     def test_kraus_representation(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            if not params[2].endswith('-c'):
+                kraus_ops = self._channel_function()(*params, kraus_representation=True)
+                
+                np.testing.assert_array_almost_equal(tm,
+                                                    self._transition_matrix_from_kraus_representation(kraus_operators=kraus_ops))
+            else:
+                with self.assertRaisesRegex(ValueError, f'This map does not admit the usual Kraus representation with mode {params[2]}.'):
+                    kraus_ops = self._channel_function()(*params, kraus_representation=True)
+
 
     def _channel_function(self):
         from  pyqch.channel_families import povm
         return povm
     
     def _dimin_dimout(self, *args):
+        # This behavior is modified for this channel
+
         dim = args[0]
         pos = args[1]
         mode = args[2]
@@ -157,9 +181,9 @@ class TestChannelFamilies_povm(TestChannelFamily):
         if mode == 'q-q':
             return (dim**2, dim**2)
         elif mode == 'q-c':
-            return (m**2, dim**2)
+            return (dim**2, m)
         elif mode == 'q-qc':
-            return ((m*dim)**2, dim**2)
+            return (dim**2, (m*dim)**2)
         else:
             raise ValueError(f'Not allowed mode {mode}.')
 
@@ -200,7 +224,7 @@ class TestChannelFamilies_povm(TestChannelFamily):
 
         r_qc = (qqc_mat @ rho_in.reshape((dim**2,))).reshape((m, dim, m ,dim))
         r_q = (qq_mat @ rho_in.reshape((dim**2,))).reshape((dim, dim))
-        r_c = (qc_mat @ rho_in.reshape((dim**2,))).reshape((m, m))
+        r_c = np.diag((qc_mat @ rho_in.reshape((dim**2,)))).reshape((m, m))
 
         r_qc_q = np.einsum("ijil->jl", r_qc)
         r_qc_c = np.einsum("ijlj->il", r_qc)
@@ -335,19 +359,42 @@ class TestChannelFamilies_dephasing(TestChannelFamily):
 class TestChannelFamilies_initializer(TestChannelFamily):
 
     def test_shape(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            dimin, dimout = self._dimin_dimout(*params)
+
+            self.assertEqual(tm.shape, (dimout, dimin))
 
     def test_is_channel(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
+        # Is channel only makes sense if mode starts with q
+
+        from pyqch.predicates import is_channel
+
+        for params in self._arbitrary_argument_generator():
+            if params[2].startswith('q'):
+                tm = self._channel_function()(*params)
+                self.assertTrue(is_channel(tm))
     
     def test_kraus_representation(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            if params[2].startswith('q'):
+                kraus_ops = self._channel_function()(*params, kraus_representation=True)
+                
+                np.testing.assert_array_almost_equal(tm,
+                                                    self._transition_matrix_from_kraus_representation(kraus_operators=kraus_ops))
+            else:
+                with self.assertRaisesRegex(ValueError, f'This map does not admit the usual Kraus representation with mode {params[2]}.'):
+                    kraus_ops = self._channel_function()(*params, kraus_representation=True)
 
     def _channel_function(self):
         from  pyqch.channel_families import initializer
         return initializer
     
     def _dimin_dimout(self, *args):
+        # This behavior is modified for this channel
+
         dim = args[0]
         states = args[1]
         mode = args[2]
@@ -355,13 +402,13 @@ class TestChannelFamilies_initializer(TestChannelFamily):
         m = states.shape[0]
 
         if mode == 'q-qc':
-            return ((m * dim) ** 2, m)
+            return (m ** 2, (m * dim) ** 2)
         elif mode == 'q-q':
-            return (dim ** 2, m ** 2)
+            return (m ** 2, dim ** 2)
         elif mode == 'c-qc':
-            return ((m * dim) ** 2, m)
+            return (m, (m * dim) ** 2)
         elif mode == 'c-q':
-            return (dim ** 2, m)
+            return (m, dim ** 2)
         else:
             raise ValueError(f'Not allowed mode {mode}.')
 
@@ -379,8 +426,8 @@ class TestChannelFamilies_initializer(TestChannelFamily):
         state_list_2 = []
         state_list_2.append(np.full(dim, 1/np.sqrt(dim)))
         k2 = np.zeros(dim)
-        k2[0] = 1 / np.sqrt(dim)
-        k2[1] = 1 / np.sqrt(dim)
+        k2[0] = 1 / np.sqrt(2)
+        k2[1] = 1 / np.sqrt(2)
         state_list_2.append(k2)
         states_2 = np.array(state_list_2)
 
@@ -517,13 +564,20 @@ class TestChannelFamilies_embed_classical(TestChannelFamily):
 class TestChannelFamilies_classical_permutation(TestChannelFamily):
 
     def test_shape(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            dimin, dimout = self._dimin_dimout(*params)
+
+            self.assertEqual(tm.shape, (dimout, dimin))
 
     def test_is_channel(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
-    
-    def test_kraus_representation(self):
-        raise NotImplementedError('This test requires specific treatment in some cases.')
+        # Asserts it is a stochastic matrix
+        atol = 1e-6
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            np.testing.assert_array_less(np.full_like(tm, -atol), tm)
+            np.testing.assert_array_almost_equal(np.ones(tm.shape[1]), np.sum(tm, axis=0))
 
     def _channel_function(self):
         from  pyqch.channel_families import classical_permutation
@@ -537,7 +591,16 @@ class TestChannelFamilies_classical_permutation(TestChannelFamily):
         shift = 1
         perm = np.roll(np.arange(dim), -shift)
         yield dim, perm
-            
+    
+    def test_is_permutation(self):
+        # Asserts it is a permutation matrix
+        # assuming it is stochastic matrix
+        
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            np.testing.assert_array_almost_equal(tm, tm * tm)
+
     def test_classical_permutation(self):
         from  src.pyqch.channel_families import classical_permutation
 
