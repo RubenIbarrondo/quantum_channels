@@ -17,9 +17,9 @@ def subsystem_reshape(state: np.ndarray, system: tuple[int]) -> np.ndarray:
     Parameters
     ----------
     state : np.ndarray
-        The denstity matrix to be reshaped.
+        The density matrix to be reshaped.
     system : tuple[int]
-        The system structure represented by a tupe with the local
+        The system structure represented by a tuple with the local
         dimension of the constituent subsystems.
 
     Returns
@@ -51,7 +51,7 @@ def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tu
     state : np.ndarray
         The density matrix of the state.
     system : tuple[int]
-        The system structure represented by a tupe with the local
+        The system structure represented by a tuple with the local
         dimension of the constituent subsystems.
     permutation : tuple[int]
         The permutation that maps i to permutation[i].
@@ -61,7 +61,7 @@ def subsystem_permutation(state: np.ndarray, system: tuple[int], permutation: tu
     Returns
     -------
     np.ndarray
-        The density matrix of the satate after applying the permutation.
+        The density matrix of the state after applying the permutation.
 
     Raises
     ------
@@ -254,3 +254,45 @@ def twirling(state: np.ndarray,
         raise ValueError("Either r or decomposition have to be provided, but both were None.")
     
     return state_twirl
+
+
+def low_rank_representation(state: np.ndarray, rank_atol: float = 1e-7, output_rank: int = None, reverse: bool = False) -> np.ndarray:
+    """
+    Generates a low rank representation of a density matrix with shape (effective rank, dim), or the reverse transformation.
+
+    Parameters
+    ----------
+    state : np.ndarray
+        Density matrix representation of the input state, or a low rank representation if reverse is True.
+    rank_atol : float, optional
+        Absolute tolerance of accumulated probability in the discarded eigenvalues, by default 1e-7. It is overwritten by output_rank.
+    output_rank : int, optional
+        Set the rank of the representation to a fixed value, by default None and rank_atol is used.
+    reverse : bool, optional
+        If true, implements the reverse transformation, by default False.
+
+    Returns
+    -------
+    np.ndarray
+        Low rank representation of the state, or the density matrix representation if reverse is True.
+    """
+    if reverse:
+        # Reverse
+        return state.T @ state.conj()
+
+    # Spectral decomposition
+    eigvals, eigvecs = np.linalg.eigh(state)
+    eigvals[eigvals <= 0] = 0  # Ensure that all values are positive
+
+    # Find effective rank, either by output_rank or rank_atol
+    if output_rank is None:
+        output_rank = state.shape[0] - np.min(np.where(np.cumsum(eigvals) >= rank_atol)[0])
+    eigvals = eigvals[-output_rank:]
+    eigvals = eigvals / np.sum(eigvals)
+    eigvecs = eigvecs[:, -output_rank:]
+
+    # Properly normalize states
+    low_rank_state = (eigvecs * np.sqrt(eigvals)).T
+
+    # Return
+    return low_rank_state
