@@ -301,7 +301,7 @@ def twirling(t: np.ndarray, r_in: list[np.ndarray], r_out: list[np.ndarray]):
 
     .. math::
 
-        T_G(\mathcal{E})(\cdot) = \frac{1}{|G|} \sum_{g \in G} R_{out}(g^{-1}) \mathcal{E}(R_{in}(g) \cdot R_{in}(g)^\dagger) R_{out}(g^{-1})^\dagger
+        T_G(\\mathcal{E})(\\cdot) = \\frac{1}{|G|} \\sum_{g \\in G} R_{out}(g^{-1}) \\mathcal{E}(R_{in}(g) \\cdot R_{in}(g)^\\dagger) R_{out}(g^{-1})^\\dagger
 
     """
     # r_in, r_out: and output representation of a finite group with each element is labeled by an integer
@@ -395,4 +395,4 @@ def doeblin_coefficient(channel: np.ndarray, transpose: bool = False, subspace_p
     if prob.status not in ["infeasible", "unbounded"]:
         return prob.value
     else:
-        return None
+        return np.nan
