@@ -38,7 +38,7 @@ def amplitude_damping(dim: int, lamb: float, x: np.ndarray | int = 1, y: np.ndar
     Returns
     -------
     np.ndarray
-        The transition matrix representing the amplitude damping channel.
+        The transition matrix or Kraus operators representing the amplitude damping channel.
 
     Notes
     -----
@@ -156,7 +156,7 @@ def dephasing(dim: int, g: float | np.ndarray, u: np.ndarray = None, kraus_repre
     Returns
     -------
     np.ndarray
-        The transition matrix for the dephasing channel.
+        The transition matrix or Kraus operators for the dephasing channel.
 
     Notes
     -----
@@ -262,7 +262,7 @@ def depolarizing(dim: int, p: float, r: np.ndarray = None, kraus_representation:
     Returns
     -------
     np.ndarray
-        The transition matrix for the depolarizing channel.
+        The transition matrix or Kraus operators for the depolarizing channel.
 
     Examples
     --------
@@ -343,7 +343,7 @@ def embed_classical(dim: int, stoch_mat: np.ndarray, kraus_representation: bool 
     Returns
     -------
     np.ndarray
-        The transition matrix representing the embedded classical channel.
+        The transition matrix or Kraus operators representing the embedded classical channel.
 
     Examples
     --------
@@ -416,7 +416,7 @@ def initializer(dim: int, states: np.ndarray, mode='c-q', kraus_representation: 
     Returns
     -------
     np.ndarray
-        The transition matrix for the initializer.
+        The transition matrix or Kraus operators for the initializer.
 
     Examples
     --------
@@ -521,7 +521,7 @@ def povm(dim: int, pos: np.ndarray, mode='q-q', kraus_representation: bool = Fal
     Returns
     -------
     np.ndarray
-        The transition matrix for the POVM-based quantum channel.
+        The transition matrix or Kraus operators for the POVM-based quantum channel.
 
     Examples
     --------
@@ -582,7 +582,7 @@ def probabilistic_damping(dim: int, p: float, kraus_representation: bool = False
     Returns
     -------
     np.ndarray
-        The transition matrix for the probabilistic damping channel.
+        The transition matrix or Kraus operators for the probabilistic damping channel.
 
     Examples
     --------
@@ -649,7 +649,7 @@ def probabilistic_unitaries(dim:int, p_arr:np.ndarray, u_arr:np.ndarray, kraus_r
     Returns
     -------
     np.ndarray
-        The transition matrix for the probabilistic unitary channel.
+        The transition matrix or Kraus operators for the probabilistic unitary channel.
 
     Examples
     --------
