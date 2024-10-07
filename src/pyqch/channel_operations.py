@@ -51,6 +51,58 @@ def choi_state(t:np.ndarray) -> np.ndarray:
     return choi
 
 
+def kraus_operators(t:np.ndarray, atol: float = 1e-6) -> np.ndarray:
+    """
+    Returns the Kraus operators of a given quantum channel.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        The transition matrix representing the quantum channel,
+        with shape (dim2**2, dim1**2)
+    atol : float, optional
+        The absolute tolerance for the norm of a Kraus operator to be
+        considered as a non-trivial Kraus operator, defaults to 1e-6.
+
+    Returns
+    -------
+    np.ndarray
+        The Kraus operators corresponding to the quantum channel,
+        with shape (kraus_rank, dim2, dim1).
+
+    Notes
+    -----
+    Currently, the method uses the spectral decomposition of the Choi matrix and discards
+    eigenvalues that are smaller than atol. This is equivalent to discarding Kraus operators
+    with np.trace(K.T @ K) <= atol * dim1.
+    
+    Using the matrix square root of the Choi matrix is a valid alternative if
+    the canonical form is not needed. It seems more efficient in cases where the
+    matrix is sparse.
+    """
+     
+    d2 = int(np.sqrt(t.shape[0]))
+    d1 = int(np.sqrt(t.shape[1]))
+
+    choi = choi_state(t)
+
+    # Using eigen-decomposition
+    w, v = np.linalg.eigh(choi)
+    
+    # Only keeping operators up to some norm
+    kraus_rank = int(np.sum(w > atol))
+    w[:-kraus_rank] = 0  # only preserve highest values
+
+    # Renormalize the operators so that the channel is still trace preserving
+    # (or trace decreasing or whatever it was)
+    w = w / np.sum(w) * np.trace(choi)
+    w *= d1  # required to fix the scale of the Choi representation
+
+    kraus_ops = ((v * np.sqrt(w)).T)[-kraus_rank:, :].reshape((kraus_rank, d2, d1))
+
+    return kraus_ops
+
+
 def tensor(t_arr: np.ndarray | list[np.ndarray], n: int = 1) -> np.ndarray:
     """
     Returns the tensor product of quantum channels represented by their 
@@ -249,7 +301,7 @@ def twirling(t: np.ndarray, r_in: list[np.ndarray], r_out: list[np.ndarray]):
 
     .. math::
 
-        T_G(\mathcal{E})(\cdot) = \frac{1}{|G|} \sum_{g \in G} R_{out}(g^{-1}) \mathcal{E}(R_{in}(g) \cdot R_{in}(g)^\dagger) R_{out}(g^{-1})^\dagger
+        T_G(\\mathcal{E})(\\cdot) = \\frac{1}{|G|} \\sum_{g \\in G} R_{out}(g^{-1}) \\mathcal{E}(R_{in}(g) \\cdot R_{in}(g)^\\dagger) R_{out}(g^{-1})^\\dagger
 
     """
     # r_in, r_out: and output representation of a finite group with each element is labeled by an integer
@@ -343,4 +395,4 @@ def doeblin_coefficient(channel: np.ndarray, transpose: bool = False, subspace_p
     if prob.status not in ["infeasible", "unbounded"]:
         return prob.value
     else:
-        return None
+        return np.nan

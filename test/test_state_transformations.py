@@ -4,7 +4,7 @@ import numpy as np
 class TestStateTransformations(unittest.TestCase):
 
     def test_subsystem_reshape(self):
-        from src.pyqch.state_transformations import subsystem_reshape
+        from pyqch.state_transformations import subsystem_reshape
         # (dim**n, dim**n) to (dim,)*n
         dim = 2
         n = 3
@@ -27,7 +27,7 @@ class TestStateTransformations(unittest.TestCase):
             rstate = subsystem_reshape(state, (dim,)*(n+1))
 
     def test_subsystem_permutation(self):
-        from src.pyqch.state_transformations import subsystem_permutation
+        from pyqch.state_transformations import subsystem_permutation
         
         # Identity
         rho1 = np.array([[1,0],[0,0]])
@@ -86,7 +86,7 @@ class TestStateTransformations(unittest.TestCase):
         np.testing.assert_array_almost_equal(rho_swap, np.kron(np.kron(rho1, rho3), rho2))
     
     def test_subsystem_permutation_201(self):
-        from src.pyqch.state_transformations import subsystem_permutation
+        from pyqch.state_transformations import subsystem_permutation
         n = 3
         dim = 2
         perm = (2, 0, 1)
@@ -112,7 +112,7 @@ class TestStateTransformations(unittest.TestCase):
         np.testing.assert_array_almost_equal(rho_perm, rho_perm_ref)
 
     def test_partial_trace(self):
-        from src.pyqch.state_transformations import partial_trace
+        from pyqch.state_transformations import partial_trace
 
         # Two sites
         rho1 = np.array([[1,0],[0,0]])
@@ -184,9 +184,9 @@ class TestStateTransformations(unittest.TestCase):
         np.testing.assert_array_almost_equal(rho_ptr, np.identity(dim)/dim)
 
 
-from src.pyqch.state_transformations import local_channel
-import src.pyqch.channel_families as cf
-import src.pyqch.channel_operations as co
+from pyqch.state_transformations import local_channel
+import pyqch.channel_families as cf
+import pyqch.channel_operations as co
 
 class TestStateTransformations_local_channel(unittest.TestCase):
        
@@ -482,3 +482,85 @@ class TestStateTransformations_twirling(unittest.TestCase):
             twirl2_arbpsi = st.twirling(arbpsi, decomposition=decomposition)
 
             np.testing.assert_array_almost_equal(twirl1_arbpsi, twirl2_arbpsi)
+
+
+class TestStateTransformations_lowRankRepresentation(unittest.TestCase):
+
+
+    def test_shape(self):
+        import pyqch.random_generators as rg
+        from pyqch.state_transformations import low_rank_representation
+
+        params = [(5, 3, 3),
+                  (5, 4, 3),
+                  (5, 2, 3)]
+
+        for dim, in_rank, ou_rank in params:
+            rho = rg.state(dim, in_rank, random_state=13082024)
+            lr_rho = low_rank_representation(rho, output_rank=ou_rank)
+
+            self.assertEqual(lr_rho.shape, (ou_rank, dim))
+
+    def test_expected_shape(self):
+        import pyqch.random_generators as rg
+        from pyqch.state_transformations import low_rank_representation
+
+        # The expected rank is the rank used in the generator
+        params = [(5, 3),
+                  (5, 4),
+                  (5, 2)]
+
+        for dim, in_rank in params:
+            rho = rg.state(dim, in_rank, random_state=13082024)
+            lr_rho = low_rank_representation(rho)
+
+            self.assertEqual(lr_rho.shape, (in_rank, dim))
+
+    def test_normalization(self):
+        import pyqch.random_generators as rg
+        from pyqch.state_transformations import low_rank_representation
+
+        # The expected rank is the rank used in the generator
+        params = [(5, 3),
+                  (5, 4),
+                  (5, 2)]
+
+        for dim, in_rank in params:
+            rho = rg.state(dim, in_rank, random_state=13082024)
+            lr_rho = low_rank_representation(rho)
+
+            self.assertAlmostEqual(np.trace(lr_rho.T @ lr_rho.conj()), 1.0)
+
+    def test_reverse_is_state(self):
+        import pyqch.random_generators as rg
+        from pyqch.predicates import is_density_matrix
+        from pyqch.state_transformations import low_rank_representation
+
+        params = [(5, 3),
+                  (5, 4),
+                  (5, 2)]
+
+        for dim, in_rank in params:
+            rho = rg.state(dim, in_rank, random_state=13082024)
+            lr_rho = low_rank_representation(rho)
+
+            lr_rho_rev = low_rank_representation(lr_rho, reverse=True)
+
+            self.assertTrue(is_density_matrix(lr_rho_rev))
+            
+
+    def test_do_undo(self):
+        import pyqch.random_generators as rg
+        from pyqch.state_transformations import low_rank_representation
+
+        params = [(5, 3),
+                  (5, 4),
+                  (5, 2)]
+
+        for dim, in_rank in params:
+            rho = rg.state(dim, in_rank, random_state=13082024)
+            lr_rho = low_rank_representation(rho)
+
+            lr_rho_rev = low_rank_representation(lr_rho, reverse=True)
+
+            np.testing.assert_array_almost_equal(lr_rho_rev, rho)

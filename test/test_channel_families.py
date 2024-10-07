@@ -1,8 +1,85 @@
 import unittest
 import numpy as np
 
-class TestChannelFamilies(unittest.TestCase):
+class TestChannelFamily(unittest.TestCase):
 
+    def _channel_function(self):
+        raise NotImplementedError('Implement _channel_function for general channel integrity verification.')
+    
+    def _dimin_dimout(self, *args):
+        raise NotImplementedError('Implement _dimin_dimout for general channel integrity verification.')
+
+    def _arbitrary_argument_generator(self):
+        raise NotImplementedError('Implement _arbitrary_argument_generator for general channel integrity verification.')
+    
+    def _transition_matrix_from_kraus_representation(self, kraus_operators):
+        krank, dim2, dim1 = kraus_operators.shape
+        return np.einsum('sji,spq->jpiq', kraus_operators, kraus_operators.conj()).reshape((dim2**2, dim1**2))
+
+    def _skip_if_abstract_class(self):
+        if type(self) is TestChannelFamily:
+            self.skipTest("TestChannelFamily is used as a basis for other channel family tests.")
+
+    def test_shape(self):
+        self._skip_if_abstract_class()
+
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            dimin, dimout = self._dimin_dimout(*params)
+
+            self.assertEqual(tm.shape, (dimout**2, dimin**2))
+
+    def test_is_channel(self):
+        self._skip_if_abstract_class()
+
+        from pyqch.predicates import is_channel
+
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            self.assertTrue(is_channel(tm))
+
+    def test_kraus_representation(self):
+        self._skip_if_abstract_class()
+
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            try:
+                kraus_ops = self._channel_function()(*params, kraus_representation=True)
+                
+                np.testing.assert_array_almost_equal(tm,
+                                                    self._transition_matrix_from_kraus_representation(kraus_operators=kraus_ops))
+            except:
+                with self.assertRaisesRegex(ValueError, 'This map does not admit the usual Kraus representation.'):
+                    kraus_ops = self._channel_function()(*params, kraus_representation=True)
+
+
+class TestChannelFamilies_depolarizing(TestChannelFamily):
+
+    def _channel_function(self):
+        from  pyqch.channel_families import depolarizing
+        return depolarizing
+    
+    def _dimin_dimout(self, *args):
+        return (args[0], args[0])
+
+    def _arbitrary_argument_generator(self):
+        
+        dim = 5
+        p_arr = np.linspace(0, 1, 10, endpoint=True)
+
+        r1 = np.identity(dim) / dim
+        
+        r2 = np.zeros((dim, dim))
+        r2[0,0] = 1
+
+        ref_states = [r1, r2]
+
+        for p in p_arr:
+            for r in ref_states:
+                yield dim, p, r
+
+    
     def test_depolarizing(self):
         from  src.pyqch.channel_families import depolarizing
 
@@ -19,7 +96,22 @@ class TestChannelFamilies(unittest.TestCase):
 
         np.testing.assert_almost_equal(rho_out, (1-p) * rho_in + p * r)
     
+class TestChannelFamilies_probabilistic_damping(TestChannelFamily):
 
+    def _channel_function(self):
+        from  pyqch.channel_families import probabilistic_damping
+        return probabilistic_damping
+    
+    def _dimin_dimout(self, *args):
+        return (args[0], args[0])
+
+    def _arbitrary_argument_generator(self):
+        dim = 5
+        g_num = 5
+
+        for g in np.linspace(0, 1, g_num, endpoint=True):
+            yield dim, g
+    
     def test_probabilistic_damping(self):
         from  src.pyqch.channel_families import probabilistic_damping
 
@@ -41,8 +133,73 @@ class TestChannelFamilies(unittest.TestCase):
 
         np.testing.assert_almost_equal(rho_out, rho_out_ref)
 
+class TestChannelFamilies_povm(TestChannelFamily):
+    def test_shape(self):
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            dimin, dimout = self._dimin_dimout(*params)
+
+            self.assertEqual(tm.shape, (dimout, dimin))
+
+    def test_is_channel(self):
+        # Is channel only makes sense if mode ends with q or qc
+
+        from pyqch.predicates import is_channel
+
+        for params in self._arbitrary_argument_generator():
+            if not params[2].endswith('-c'):
+                tm = self._channel_function()(*params)
+                self.assertTrue(is_channel(tm))
+    
+    def test_kraus_representation(self):
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            if not params[2].endswith('-c'):
+                kraus_ops = self._channel_function()(*params, kraus_representation=True)
+                
+                np.testing.assert_array_almost_equal(tm,
+                                                    self._transition_matrix_from_kraus_representation(kraus_operators=kraus_ops))
+            else:
+                with self.assertRaisesRegex(ValueError, f'This map does not admit the usual Kraus representation with mode {params[2]}.'):
+                    kraus_ops = self._channel_function()(*params, kraus_representation=True)
+
+
+    def _channel_function(self):
+        from  pyqch.channel_families import povm
+        return povm
+    
+    def _dimin_dimout(self, *args):
+        # This behavior is modified for this channel
+
+        dim = args[0]
+        pos = args[1]
+        mode = args[2]
+
+        m = pos.shape[0]
+
+        if mode == 'q-q':
+            return (dim**2, dim**2)
+        elif mode == 'q-c':
+            return (dim**2, m)
+        elif mode == 'q-qc':
+            return (dim**2, (m*dim)**2)
+        else:
+            raise ValueError(f'Not allowed mode {mode}.')
+
+    def _arbitrary_argument_generator(self):
+        dim = 8
+        pos = np.zeros((dim, dim, dim))
+        for x in range(dim):
+            pos[x,x,x] = 1
+
+        modes = ['q-q', 'q-c', 'q-qc']
+
+        for mode in modes:
+            yield dim, pos, mode
+    
     def test_povm_computational_basis(self):
-        # POs for the coputational basis
+        # POs for the computational basis
         dim = 8
         pos = np.zeros((dim, dim, dim))
         for x in range(dim):
@@ -67,7 +224,7 @@ class TestChannelFamilies(unittest.TestCase):
 
         r_qc = (qqc_mat @ rho_in.reshape((dim**2,))).reshape((m, dim, m ,dim))
         r_q = (qq_mat @ rho_in.reshape((dim**2,))).reshape((dim, dim))
-        r_c = (qc_mat @ rho_in.reshape((dim**2,))).reshape((m, m))
+        r_c = np.diag((qc_mat @ rho_in.reshape((dim**2,)))).reshape((m, m))
 
         r_qc_q = np.einsum("ijil->jl", r_qc)
         r_qc_c = np.einsum("ijlj->il", r_qc)
@@ -75,6 +232,38 @@ class TestChannelFamilies(unittest.TestCase):
         np.testing.assert_almost_equal(r_q,r_qc_q)
         np.testing.assert_almost_equal(r_c,r_qc_c)
 
+
+class TestChannelFamilies_dephasing(TestChannelFamily):
+
+    def _channel_function(self):
+        from  pyqch.channel_families import dephasing
+        return dephasing
+    
+    def _dimin_dimout(self, *args):
+        return (args[0], args[0])
+
+    def _arbitrary_argument_generator(self):
+        from scipy.stats import unitary_group
+        dim = 3
+        g = .33
+        u = unitary_group(dim, seed=123).rvs()
+
+        yield dim, g, None
+        yield dim, g, u
+
+        # Generate a random positive definite matrix
+        g = np.random.random((dim, dim))
+        g = g @ g.T
+
+        # Normalize so that setting the diagonal elements to one is
+        # equivalent to adding a positive diagonal matrix
+        g /= np.max(np.diag(g))
+        for i in range(dim):
+            g[i, i] = 1
+
+        yield dim, g, None
+        yield dim, g, u
+            
     def test_dephasing_simple_computational(self):
         from  src.pyqch.channel_families import dephasing
         dim = 3
@@ -138,7 +327,6 @@ class TestChannelFamilies(unittest.TestCase):
 
         np.testing.assert_almost_equal(rho_out, rho_out_ref)
     
-
     def test_dephasing_general_arbbasis(self):
         from  src.pyqch.channel_families import dephasing
         from scipy.stats import unitary_group
@@ -167,6 +355,88 @@ class TestChannelFamilies(unittest.TestCase):
 
         np.testing.assert_almost_equal(rho_out, rho_out_ref)
 
+
+class TestChannelFamilies_initializer(TestChannelFamily):
+
+    def test_shape(self):
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            dimin, dimout = self._dimin_dimout(*params)
+
+            self.assertEqual(tm.shape, (dimout, dimin))
+
+    def test_is_channel(self):
+        # Is channel only makes sense if mode starts with q
+
+        from pyqch.predicates import is_channel
+
+        for params in self._arbitrary_argument_generator():
+            if params[2].startswith('q'):
+                tm = self._channel_function()(*params)
+                self.assertTrue(is_channel(tm))
+    
+    def test_kraus_representation(self):
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            if params[2].startswith('q'):
+                kraus_ops = self._channel_function()(*params, kraus_representation=True)
+                
+                np.testing.assert_array_almost_equal(tm,
+                                                    self._transition_matrix_from_kraus_representation(kraus_operators=kraus_ops))
+            else:
+                with self.assertRaisesRegex(ValueError, f'This map does not admit the usual Kraus representation with mode {params[2]}.'):
+                    kraus_ops = self._channel_function()(*params, kraus_representation=True)
+
+    def _channel_function(self):
+        from  pyqch.channel_families import initializer
+        return initializer
+    
+    def _dimin_dimout(self, *args):
+        # This behavior is modified for this channel
+
+        dim = args[0]
+        states = args[1]
+        mode = args[2]
+
+        m = states.shape[0]
+
+        if mode == 'q-qc':
+            return (m ** 2, (m * dim) ** 2)
+        elif mode == 'q-q':
+            return (m ** 2, dim ** 2)
+        elif mode == 'c-qc':
+            return (m, (m * dim) ** 2)
+        elif mode == 'c-q':
+            return (m, dim ** 2)
+        else:
+            raise ValueError(f'Not allowed mode {mode}.')
+
+    def _arbitrary_argument_generator(self):
+
+        dim = 3
+
+        # Mixed form
+        state_list_1 = []
+        state_list_1.append(np.full((dim, dim), 1/dim))
+        state_list_1.append(np.diag(2/dim/(dim+1)*np.arange(1, 1+dim, dtype=float)))
+        states_1 = np.array(state_list_1)
+
+        # Pure form
+        state_list_2 = []
+        state_list_2.append(np.full(dim, 1/np.sqrt(dim)))
+        k2 = np.zeros(dim)
+        k2[0] = 1 / np.sqrt(2)
+        k2[1] = 1 / np.sqrt(2)
+        state_list_2.append(k2)
+        states_2 = np.array(state_list_2)
+
+        modes = ['q-qc', 'q-q', 'c-qc', 'c-q']
+
+        for states in [states_1, states_2]:
+            for mode in modes:
+                yield dim, states, mode
+    
     def test_initializer(self):
         from  src.pyqch.channel_families import initializer
 
@@ -209,6 +479,32 @@ class TestChannelFamilies(unittest.TestCase):
                               for k in range(len(state_list))], axis=0)
         np.testing.assert_almost_equal(rho_out, rho_out_ref)
     
+
+class TestChannelFamilies_probabilistic_unitaries(TestChannelFamily):
+
+    def _channel_function(self):
+        from  pyqch.channel_families import probabilistic_unitaries
+        return probabilistic_unitaries
+    
+    def _dimin_dimout(self, *args):
+        return (args[0], args[0])
+
+    def _arbitrary_argument_generator(self):
+        from scipy.stats import unitary_group
+        seed = 20240808
+        rng = np.random.default_rng(seed)
+        dim = 3
+
+        num_cases = 5
+        unitary_num = 4
+
+        for _ in range(num_cases):
+            p_arr = np.random.random(unitary_num)
+            p_arr /= np.sum(p_arr)
+
+            u_arr = np.array([unitary_group.rvs(dim, random_state=rng) for _ in range(unitary_num)])
+            yield dim, p_arr, u_arr    
+    
     def test_probabilistic_unitaries(self):
         from  src.pyqch.channel_families import probabilistic_unitaries
 
@@ -232,6 +528,23 @@ class TestChannelFamilies(unittest.TestCase):
         rho_out_ref = np.sum([probs[k] * us[k] @ rho_in @ us[k].T.conj() for k in range(len(u_list))], axis=0)
         np.testing.assert_almost_equal(rho_out, rho_out_ref)
 
+
+class TestChannelFamilies_embed_classical(TestChannelFamily):
+
+    def _channel_function(self):
+        from  pyqch.channel_families import embed_classical
+        return embed_classical
+    
+    def _dimin_dimout(self, *args):
+        return args[1].shape
+
+    def _arbitrary_argument_generator(self):
+        dim = 3
+        stoch = np.outer(np.arange(1, dim+1, dtype=float), np.arange(1, dim+1, dtype=float))
+        stoch /= np.sum(stoch, axis=1)
+
+        yield dim, stoch
+    
     def test_embed_classical(self):
         from  src.pyqch.channel_families import embed_classical
 
@@ -246,6 +559,47 @@ class TestChannelFamilies(unittest.TestCase):
         rho_out = (embed_classical(dim, stoch) @ rho_in.reshape(dim**2)).reshape((dim, dim))
 
         np.testing.assert_almost_equal(rho_p_out, rho_out)
+
+
+class TestChannelFamilies_classical_permutation(TestChannelFamily):
+
+    def test_shape(self):
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            dimin, dimout = self._dimin_dimout(*params)
+
+            self.assertEqual(tm.shape, (dimout, dimin))
+
+    def test_is_channel(self):
+        # Asserts it is a stochastic matrix
+        atol = 1e-6
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            np.testing.assert_array_less(np.full_like(tm, -atol), tm)
+            np.testing.assert_array_almost_equal(np.ones(tm.shape[1]), np.sum(tm, axis=0))
+
+    def _channel_function(self):
+        from  pyqch.channel_families import classical_permutation
+        return classical_permutation
+    
+    def _dimin_dimout(self, *args):
+        return (args[0], args[0])
+
+    def _arbitrary_argument_generator(self):
+        dim = 3
+        shift = 1
+        perm = np.roll(np.arange(dim), -shift)
+        yield dim, perm
+    
+    def test_is_permutation(self):
+        # Asserts it is a permutation matrix
+        # assuming it is stochastic matrix
+        
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+
+            np.testing.assert_array_almost_equal(tm, tm * tm)
 
     def test_classical_permutation(self):
         from  src.pyqch.channel_families import classical_permutation
@@ -262,6 +616,35 @@ class TestChannelFamilies(unittest.TestCase):
 
         np.testing.assert_almost_equal(p_out, p_out_ref)
     
+
+class TestChannelFamilies_transposition(TestChannelFamily):
+
+    def test_is_channel(self):
+        self._skip_if_abstract_class()
+
+        from pyqch.predicates import is_channel
+
+        for params in self._arbitrary_argument_generator():
+            tm = self._channel_function()(*params)
+            self.assertFalse(is_channel(tm))
+
+    def _channel_function(self):
+        from  pyqch.channel_families import transposition
+        return transposition
+    
+    def _dimin_dimout(self, *args):
+        return (args[0], args[0])
+
+    def _arbitrary_argument_generator(self):
+        from scipy.stats import unitary_group
+        seed = 20240808
+        dim = 3
+
+        u_arr = [None, unitary_group.rvs(dim, random_state=seed)]
+
+        for u in u_arr:
+            yield dim, u
+            
     def test_transposition(self):
         from pyqch.channel_families import transposition
 
@@ -272,13 +655,20 @@ class TestChannelFamilies(unittest.TestCase):
         rho_out = (trans @ rho_in.reshape((dim**2))).reshape((dim, dim))
         np.testing.assert_array_almost_equal(rho_out, rho_in.T)
 
-    def test_amplitude_damping_shape_ischannel(self):
-        from src.pyqch.channel_families import amplitude_damping
-        from src.pyqch import predicates
-        
+
+class TestChannelFamilies_amplitude_damping(TestChannelFamily):
+
+    def _channel_function(self):
+        from  pyqch.channel_families import amplitude_damping
+        return amplitude_damping
+    
+    def _dimin_dimout(self, *args):
+        return (args[0], args[0])
+
+    def _arbitrary_argument_generator(self):
+
         rng = np.random.default_rng(123)
 
-        # Shape and is channel
         dim = 5
         lamb = .3
 
@@ -294,12 +684,7 @@ class TestChannelFamilies(unittest.TestCase):
                 else:
                     y = rng.random(dim)
                     y /= np.linalg.norm(y)
-                
-                tad = amplitude_damping(dim, lamb=lamb, x=x, y=y)
-
-                self.assertEqual(tad.shape, (dim**2, dim**2))
-
-                self.assertTrue(predicates.is_channel(tad))
+            yield dim, lamb, x, y
 
     def test_amplitude_damping_qubit(self):
         from src.pyqch.channel_families import amplitude_damping
