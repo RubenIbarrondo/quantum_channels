@@ -9,7 +9,6 @@ products of channel representations, and finding fixed points of a channel.
 
 import numpy as np
 from scipy import linalg
-import cvxpy as cp
 from pyqch import channel_families as cf
 
 
@@ -322,6 +321,9 @@ def doeblin_coefficient(channel: np.ndarray, transpose: bool = False, subspace_p
     can be degraded into the given channel. This implementation uses the SDP construction 
     described in reference [1].
 
+    The function dependends on the optional package `cvxpy`. Please install it with
+    `pip install cvxpy` before using the function.
+
     Parameters
     ----------
     channel : np.ndarray
@@ -356,6 +358,13 @@ def doeblin_coefficient(channel: np.ndarray, transpose: bool = False, subspace_p
     [1] : C. Hirche (2024), "Quantum Doeblin coefficients: A simple upper bound on contraction
     coefficients" (arXiv: 2405.00105)
     """
+    try:
+        import cvxpy as cp
+    except ImportError:
+        raise ImportError(
+            "The function `doeblin_coefficient` requires `cvxpy`, "
+            "which is not installed. Please install it with `pip install cvxpy`."
+        )
 
     d1, d2 = int(np.sqrt(channel.shape[1])), int(np.sqrt(channel.shape[0]))
 
